@@ -1,0 +1,5 @@
+g++ nombre_del_archivo.cpp -o nombre del archivo compilado
+./potencia
+
+g++ es el compilador de C++ que forma parte de GCC (GNU Compiler Collection). En Mac, 
+necesitas instalar las herramientas de desarrollo de Xcode para obtener g++.

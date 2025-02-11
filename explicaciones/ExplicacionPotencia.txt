@@ -1,0 +1,45 @@
+EXPLICACIÓN DEL CÓDIGO POTENCIA.CPP LÍNEA POR LÍNEA:
+
+#include <iostream>
+-> Esta línea incluye la biblioteca estándar de C++ para entrada/salida (input/output)
+-> Necesaria para usar cout (mostrar texto en pantalla)
+
+int main() {
+-> Función principal del programa, donde comienza la ejecución
+-> 'int' significa que la función retornará un número entero
+
+    int base = 2;
+    -> Declara una variable llamada 'base' de tipo entero y le asigna el valor 2
+    
+    int exponente = 3;
+    -> Declara una variable llamada 'exponente' de tipo entero y le asigna el valor 3
+    
+    int resultado = 1;
+    -> Declara una variable 'resultado' y la inicializa en 1
+    -> Comenzamos en 1 porque es el elemento neutro de la multiplicación
+
+    // Multiplicamos 2 por sí mismo 3 veces
+    for(int i = 0; i < exponente; i++) {
+    -> Bucle que se repetirá 'exponente' veces (en este caso 3 veces)
+    -> 'i' comienza en 0 y aumenta de 1 en 1 hasta llegar a exponente-1
+
+        resultado = resultado * base;
+        -> En cada vuelta, multiplica el resultado anterior por la base
+        -> Primera vuelta:  1 × 2 = 2
+        -> Segunda vuelta:  2 × 2 = 4
+        -> Tercera vuelta:  4 × 2 = 8
+        etc
+    }
+
+    std::cout << "El resultado es: " << resultado << std::endl;
+    -> 'std::cout' es el objeto de salida estándar (pantalla)
+    -> '<<' es el operador de inserción
+    -> 'std::endl' añade un salto de línea al final
+    -> Esta línea muestra el mensaje y el resultado final
+
+    return 0;
+    -> Indica que el programa terminó correctamente
+}
+
+RESULTADO FINAL:
+El programa calculará 2³ (2 elevado a 3), que es igual a 8 

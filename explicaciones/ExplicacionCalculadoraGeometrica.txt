@@ -1,0 +1,86 @@
+EXPLICACIÓN DEL CÓDIGO: CALCULADORA GEOMÉTRICA
+
+1. ESTRUCTURA GENERAL
+El código está organizado en:
+- Inclusión de bibliotecas necesarias
+- Clase CalculadoraGeometrica con métodos para cada figura
+- Función main para demostración y pruebas
+
+2. BIBLIOTECAS UTILIZADAS (#include)
+- <iostream> : Proporciona funciones para entrada/salida estándar (cout, endl)
+- <cmath> : Provee funciones y constantes matemáticas (M_PI, sqrt, tan)
+
+3. CLASE CALCULADORAGEOMETRICA
+Contiene 6 métodos públicos para calcular áreas:
+
+a) double areaCirculo(double radio)
+   - Propósito: Calcula el área de un círculo
+   - Fórmula: A = π * r²
+   - Parámetro: radio (tipo double)
+   - Retorno: área del círculo (double)
+   - Ejemplo: Para radio = 5, área ≈ 78.54
+
+b) double areaCuadrado(double lado)
+   - Propósito: Calcula el área de un cuadrado
+   - Fórmula: A = lado²
+   - Parámetro: lado (tipo double)
+   - Retorno: área del cuadrado (double)
+   - Ejemplo: Para lado = 4, área = 16
+
+c) double areaRectangulo(double base, double altura)
+   - Propósito: Calcula el área de un rectángulo
+   - Fórmula: A = base * altura
+   - Parámetros: base y altura (tipo double)
+   - Retorno: área del rectángulo (double)
+   - Ejemplo: Para base = 6 y altura = 3, área = 18
+
+d) double areaPentagono(double lado)
+   - Propósito: Calcula el área de un pentágono regular
+   - Fórmula: A = (perímetro * apotema) / 2
+   - Cálculo de apotema: lado / (2 * tan(π/5))
+   - Parámetro: lado (tipo double)
+   - Retorno: área del pentágono (double)
+   - Perímetro = 5 * lado
+
+e) double areaHexagono(double lado)
+   - Propósito: Calcula el área de un hexágono regular
+   - Fórmula: A = (perímetro * apotema) / 2
+   - Cálculo de apotema: lado * √3 / 2
+   - Parámetro: lado (tipo double)
+   - Retorno: área del hexágono (double)
+   - Perímetro = 6 * lado
+
+f) double areaHeptagono(double lado)
+   - Propósito: Calcula el área de un heptágono regular
+   - Fórmula: A = (perímetro * apotema) / 2
+   - Cálculo de apotema: lado / (2 * tan(π/7))
+   - Parámetro: lado (tipo double)
+   - Retorno: área del heptágono (double)
+   - Perímetro = 7 * lado
+
+4. FUNCIÓN MAIN
+- Crea un objeto de la clase: CalculadoraGeometrica calc;
+- Define variables de prueba:
+  * radio = 5 (para el círculo)
+  * lado = 4 (para cuadrado, pentágono, hexágono y heptágono)
+  * base = 6 (para el rectángulo)
+  * altura = 3 (para el rectángulo)
+- Muestra resultados usando cout:
+  * Imprime un encabezado
+  * Para cada figura, muestra los valores usados y el resultado
+  * Usa endl para nuevas líneas
+
+5. CONSIDERACIONES TÉCNICAS
+- Uso de double para mayor precisión en cálculos decimales
+- Constante M_PI para valor preciso de π
+- Uso de funciones matemáticas:
+  * sqrt() para raíz cuadrada
+  * tan() para tangente
+- Fórmulas optimizadas para polígonos regulares
+- Manejo de precisión decimal implícita
+
+6. COMPILACIÓN Y EJECUCIÓN
+- Requiere compilador C++ (g++)
+- Comando de compilación: g++ CalculadoraGeometrica.cpp -o calculadora -lm
+- Ejecución: ./calculadora
+- La bandera -lm es necesaria en sistemas Unix para la biblioteca matemática
