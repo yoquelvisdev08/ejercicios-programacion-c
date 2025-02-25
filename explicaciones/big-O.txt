@@ -1,0 +1,98 @@
+NOTACIÓN BIG-O EN PROGRAMACIÓN
+==============================
+
+1. DEFINICIÓN
+-------------
+La notación Big-O es una notación matemática que describe el comportamiento asintótico o la complejidad de un algoritmo, indicando cómo crece el tiempo de ejecución o el espacio de memoria en relación al tamaño de entrada.
+
+2. COMPLEJIDADES COMUNES
+-----------------------
+2.1. O(1) - TIEMPO CONSTANTE
+    - Mejor rendimiento posible
+    - Tiempo de ejecución constante sin importar el tamaño
+    - Ejemplo: Acceso a elemento de array
+
+2.2. O(log n) - TIEMPO LOGARÍTMICO
+    - Muy eficiente
+    - Común en algoritmos que dividen el problema
+    - Ejemplo: Búsqueda binaria
+
+2.3. O(n) - TIEMPO LINEAL
+    - Crecimiento proporcional al tamaño de entrada
+    - Ejemplo: Búsqueda lineal en array
+
+2.4. O(n log n) - TIEMPO LINEARÍTMICO
+    - Común en algoritmos eficientes de ordenamiento
+    - Ejemplo: Merge Sort, Quick Sort
+
+2.5. O(n²) - TIEMPO CUADRÁTICO
+    - Crecimiento exponencial
+    - Común en bucles anidados
+    - Ejemplo: Bubble Sort
+
+2.6. O(2ⁿ) - TIEMPO EXPONENCIAL
+    - Muy ineficiente para entradas grandes
+    - Ejemplo: Fibonacci recursivo sin memorización
+
+3. REGLAS IMPORTANTES
+--------------------
+3.1. IGNORAR CONSTANTES
+    - O(2n) → O(n)
+    - O(1/2n) → O(n)
+
+3.2. TÉRMINOS DOMINANTES
+    - O(n² + n) → O(n²)
+    - O(n³ + n² + n) → O(n³)
+
+4. OPERACIONES COMUNES
+---------------------
+- Acceso a array: O(1)
+- Búsqueda en array no ordenado: O(n)
+- Búsqueda en array ordenado: O(log n)
+- Inserción/eliminación en array: O(n)
+- Inserción/eliminación al inicio de array: O(n)
+
+5. IMPORTANCIA EN PROGRAMACIÓN
+-----------------------------
+5.1. Permite predecir el rendimiento de algoritmos
+5.2. Facilita la comparación entre diferentes soluciones
+5.3. Fundamental para la optimización de código
+5.4. Esencial en entrevistas técnicas
+5.5. Crucial para desarrollo de software escalable
+
+6. EJEMPLOS PRÁCTICOS
+--------------------
+6.1. O(1) - Acceso directo
+    array[0] // Acceso al primer elemento
+
+6.2. O(log n) - Búsqueda binaria
+    while (inicio <= fin) {
+        medio = (inicio + fin) / 2
+        // Comparar y ajustar inicio o fin
+    }
+
+6.3. O(n) - Búsqueda lineal
+    for (elemento in array) {
+        if (elemento == objetivo)
+            return true
+    }
+
+6.4. O(n²) - Bubble Sort
+    for (i = 0; i < n; i++)
+        for (j = 0; j < n-1; j++)
+            // Comparar y swap
+
+7. CONSIDERACIONES FINALES
+-------------------------
+- La notación describe el peor caso
+- Ayuda a tomar decisiones de diseño
+- Fundamental para el desarrollo profesional
+- Base para la optimización de algoritmos
+- Herramienta esencial para análisis de rendimiento
+
+NOTA: Esta notación es crucial para cualquier programador que busque escribir código eficiente y mantenible.
+
+
+
+hacer algoritmo de big-O con cada una y su definicio 
+adivinar que tipo de notacion big-o
