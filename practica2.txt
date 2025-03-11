@@ -1,0 +1,123 @@
+Bloque 5: Arreglos o Vectores
+
+ Ejercicio 1: Escribe un programa que defina un vector de números y calcule la suma de sus elementos.
+
+ Ejercicio  2:  Escribe  un  programa  que  defina  un  vector  de  números  y  calcule  la multiplicación acumulada de sus elementos.
+
+ Ejercicio 3: Escribe un programa que lea de la entrada estándar un vector de números y muestre en la salida estándar los números del vector con sus índices asociados. 
+
+Ejercicio 4:  Escribe un programa que defina un vector de números y muestre en la salida estándar el vector en orden inverso—del último al primer elemento.
+
+ Ejercicio 5: Desarrolle un programa que lea de la entrada estándar un vector de enteros y determine el mayor elemento del vector. 
+
+ 
+
+Bloque 6: Matrices o Tablas
+
+Ejercicio 1: Hacer un programa para rellenar una matriz pidiendo al usuario el número de filas y columnas, Posteriormente mostrar la matriz en pantalla.
+
+ 
+
+Ejercicio 2: Realiza un programa que defina una matriz de 3x3 y escriba un ciclo para que muestre la diagonal principal de la matriz.
+
+Ejercicio 3: Hacer una matriz de tipo entera de 2 * 2, llenarla de números y luego copiar todo su contenido hacia otra matriz.
+
+Ejercicio 4: Hacer una matriz preguntando al usuario el número de filas y columnas, llenarla de números aleatorios, copiar el contenido a otra matriz y por último mostrarla en pantalla.
+
+Ejercicio 5: Realice un programa que lea una matriz de 3x3 y cree su matriz traspuesta. La matriz traspuesta es aquella en la que la columna i era la fila i de la matriz original.
+
+Bloque 7: Cadenas
+
+ Ejercicio  1:  Hacer  un  programa  que  pida  al  usuario  que  digite  una  cadena  de caracteres, luego verificar la longitud de la cadena, y si ésta supera a 10 caracteres mostrarla en pantalla, caso contrario no mostrarla.
+
+Ejercicio 2: Pedir al usuario una cadena de caracteres, almacenarla en un arreglo y copiar todo su contenido hacia otro arreglo de caracteres.
+
+ Ejercicio 3: Pedir al usuario que digite 2 cadenas de caracteres, e indicar si ambas cadenas son iguales, en caso de no serlo, indicar cuál es mayor alfabéticamente.
+
+Ejercicio 4: Crear una cadena que tenga la siguiente frase "Hola que tal", luego crear otra cadena para preguntarle al usuario su nombre, por ultimo añadir el nombre al final de la primera cadena y mostrar el mensaje completo "Hola que tal (NombreDelUsuario)".
+
+ Ejercicio 5: Hacer un programa que determine si una palabra es palíndroma.
+
+ 
+
+Bloque 8: Estructuras
+
+Ejercicio 1: Hacer una estructura llamada corredor, en la cual se tendrán los siguientes
+
+campos: Nombre, edad, sexo, club, pedir datos al usuario para un corredor, y asignarle
+
+una categoría de competición:
+
+- Juvenil <= 18 años
+
+- Señor <= 40 años
+
+- Veterano > 40 años
+
+Posteriormente  imprimir  todos  los  datos  del  corredor,  incluida  su  categoría  de
+
+competición.
+
+ 
+
+Ejercicio 2: Hacer una estructura llamada alumno, en la cual se tendrán los siguientes
+
+Campos: Nombre, edad, promedio, pedir datos al usuario para 3 alumnos, comprobar
+
+cuál de los 3 tiene el mejor promedio y posteriormente imprimir los datos del alumno.
+
+ 
+
+Ejercicio 3:  Realizar un programa que lea un arreglo de estructuras los datos de N
+
+empleados de la empresa y que imprima los datos del empleado con mayor y menor
+
+salario.
+
+ 
+
+Ejercicio 4: Hacer un arreglo de estructura llamada atleta para N atletas que contenga
+
+los  siguientes  campos:  nombre,  país,  numero  de  medallas.  Y  devuelva  los  datos
+
+(Nombre, país) del atleta que ha ganado el mayor número de medallas.
+
+ 
+
+Ejercicio  5:  Hacer  2  estructuras  una  llamada  promedio  que  tendrá  los  siguientes
+
+campos: nota1, nota2, nota3; y otro llamada alumno que tendrá los siguientes miembros:
+
+nombre, sexo, edad; hacer que la estructura promedio este anidada en la estructura
+
+alumno, luego pedir todos los datos para un alumno, luego calcular su promedio, y por
+
+ultimo imprimir todos sus datos incluidos el promedio.
+
+ 
+
+Ejercicio 6: Utilizar las 2 estructuras del problema 5, pero ahora pedir los datos para N
+
+alumnos, y calcular cuál de todos tiene el mejor promedio, e imprimir sus datos.
+
+ 
+
+Ejercicio 7: Defina una estructura que indique el tiempo empleado por un ciclista en
+
+una etapa. La estructura debe tener tres campos: horas, minutos y segundos. Escriba
+
+un programa que dado n etapas calcule el tiempo total empleado en correr todas las
+
+etapas.
+
+ 
+
+Ejercicio  8:  Defina  una  estructura  que  sirva  para  representar  a  una  persona.  La
+
+estructura debe contener dos campos: el nombre de la persona y un valor de tipo lógico
+
+que indica si la persona tiene algún tipo de discapacidad. Realice un programa que dado
+
+un vector de personas rellene dos nuevos vectores: uno que contenga las personas que
+
+no tienen ninguna discapacidad y otro que contenga las personas con discapacidad.
