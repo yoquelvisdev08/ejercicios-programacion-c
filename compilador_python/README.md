@@ -6,6 +6,8 @@ Un compilador C++ avanzado con interfaz gráfica que permite compilar, ejecutar 
 
 - 🖥️ Interfaz gráfica moderna y fácil de usar
 - 📄 Soporte para arrastrar y soltar archivos
+- 📚 Compilación por lotes de múltiples archivos C++
+- 📁 Búsqueda recursiva de archivos en directorios
 - 📸 Capturas de pantalla automáticas de la ejecución
 - 📝 Generación de documentación en PDF
 - 🎨 Estilos personalizados según el tipo de ejercicio
@@ -64,9 +66,17 @@ El script creará automáticamente un entorno virtual e instalará todas las dep
 ```
 
 2. En la interfaz gráfica:
-   - Arrastrar archivos .cpp a la ventana o hacer clic para seleccionarlos
-   - Hacer clic en "Compilar y Ejecutar"
-   - Los resultados se mostrarán en pantalla y se guardarán en un PDF
+   - **Compilación Individual**:
+     - Arrastrar archivos .cpp a la ventana o hacer clic para seleccionarlos
+     - Hacer clic en "Compilar y Generar PDF"
+     - Los resultados se mostrarán en pantalla y se guardarán en un PDF
+   
+   - **Compilación por Lotes**:
+     - Seleccionar una carpeta que contenga archivos C++
+     - Establecer el patrón de búsqueda (por defecto "*.cpp")
+     - Hacer clic en "Buscar Archivos" para encontrar todos los archivos coincidentes
+     - Seleccionar los archivos que se desean compilar
+     - Hacer clic en "Compilar Lote y Generar PDF"
 
 ### Modo Consola
 
@@ -122,6 +132,23 @@ Las configuraciones se pueden ajustar en `config/settings.py`:
 - Configuración de capturas
 - Formato del PDF
 
+## Modos de Compilación
+
+### Compilación Individual
+
+El modo de compilación individual permite:
+- Seleccionar archivos específicos para compilar
+- Ver detalles del proceso de compilación para cada archivo
+- Generar documentación detallada de cada archivo
+
+### Compilación por Lotes
+
+El modo de compilación por lotes permite:
+- Seleccionar una carpeta que contiene múltiples archivos C++
+- Buscar archivos en subdirectorios con patrones personalizados
+- Compilar múltiples archivos en una sola operación
+- Generar un informe consolidado en PDF
+
 ## Solución de Problemas
 
 ### La interfaz gráfica no se inicia
@@ -143,6 +170,12 @@ g++ --version
 1. Verificar permisos de acceso a la pantalla
 2. Asegurar que hay suficiente espacio en disco
 3. Verificar que el directorio temporal es escribible
+
+### Problemas con el modo de lotes
+
+1. Asegurarse de que la carpeta existe y tiene permisos de lectura
+2. Verificar que el patrón de búsqueda está correctamente formateado
+3. Para búsquedas recursivas, añadir "**/*.cpp" como patrón
 
 ## Contribuir
 

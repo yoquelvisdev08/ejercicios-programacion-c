@@ -19,6 +19,7 @@
 #include <iostream>
 #include <string.h>
 #include <iomanip>
+#include <limits>
 using namespace std;
 
 // Definición de la estructura corredor
@@ -61,12 +62,35 @@ int main() {
     cout << "👤 Nombre: ";
     cin.getline(corredor1.nombre, 50, '\n');
     
-    cout << "🎂 Edad: ";
-    cin >> corredor1.edad;
-    cin.ignore();
+    cout << "\n"; // Salto de línea entre inputs
+    
+    // Validar la edad
+    bool edad_valida = false;
+    do {
+        cout << "🎂 Edad: ";
+        cin >> corredor1.edad;
+        
+        if(cin.fail()) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "\n⚠️ Error: Por favor ingrese un número válido para la edad.\n\n";
+        }
+        else if(corredor1.edad <= 0 || corredor1.edad > 120) {
+            cout << "\n⚠️ Error: La edad debe estar entre 1 y 120 años.\n\n";
+        }
+        else {
+            edad_valida = true;
+        }
+    } while(!edad_valida);
+    
+    cin.ignore(); // Limpiar buffer después de leer la edad
+    
+    cout << "\n"; // Salto de línea entre inputs
     
     cout << "⚥ Sexo (Masculino/Femenino): ";
     cin.getline(corredor1.sexo, 10, '\n');
+    
+    cout << "\n"; // Salto de línea entre inputs
     
     cout << "🏢 Club: ";
     cin.getline(corredor1.club, 30, '\n');
@@ -96,6 +120,10 @@ int main() {
     cout << left << setw(15) << "🏆 Categoría:" << corredor1.categoria << endl;
     
     cout << "\n✨ ¡Registro completado con éxito! ✨\n\n";
+    
+    // Añadir instrucciones finales
+    cout << "Presione Enter para finalizar...";
+    cin.get();
     
     return 0;
 } 

@@ -1,44 +1,106 @@
 /*
+ * 📊 DIAGONAL PRINCIPAL DE MATRIZ 📊
+ * ===============================
+ *
  * Bloque 6: Ejercicio 2
- * Programa que define una matriz de 3x3 y escribe un ciclo para que 
- * muestre la diagonal principal de la matriz.
+ * --------------------
+ * Programa que define una matriz de 3x3 y muestra la diagonal principal.
  *
  * Autor: Yoquelvis Abreu
  * Fecha: Marzo 2024
  */
 
 #include <iostream>
+#include <iomanip>
 using namespace std;
 
+// Función para limpiar la pantalla
+void limpiarPantalla() {
+    #ifdef _WIN32
+        system("cls");
+    #else
+        system("clear");
+    #endif
+}
+
+// Función para mostrar el banner del programa
+void mostrarBanner() {
+    cout << "\n";
+    cout << "╔═════════════════════════════════════╗\n";
+    cout << "║     DIAGONAL PRINCIPAL DE MATRIZ    ║\n";
+    cout << "╚═════════════════════════════════════╝\n\n";
+}
+
 int main() {
-    // Declaracion de variables
-    int matriz[3][3]; // Matriz de 3x3
-    int i, j; // Variables para ciclos
+    // Limpiar pantalla y mostrar banner
+    limpiarPantalla();
+    mostrarBanner();
     
-    // Rellenar la matriz
-    cout << "Digite los elementos de la matriz 3x3:\n";
-    for(i = 0; i < 3; i++) {
-        for(j = 0; j < 3; j++) {
-            cout << "Digite el elemento [" << i << "][" << j << "]: ";
+    // Declaracion de variables
+    const int FILAS = 3;
+    const int COLUMNAS = 3;
+    int matriz[FILAS][COLUMNAS];
+    
+    // Explicación del programa
+    cout << "📋 DESCRIPCIÓN: Este programa crea una matriz de 3x3 y\n";
+    cout << "               muestra su diagonal principal.\n\n";
+    
+    // Solicitar los elementos de la matriz
+    cout << "🔢 INGRESO DE DATOS DE LA MATRIZ (3x3):\n";
+    cout << "===================================\n";
+    
+    for(int i = 0; i < FILAS; i++) {
+        for(int j = 0; j < COLUMNAS; j++) {
+            cout << "   Elemento [" << i << "][" << j << "]: ";
             cin >> matriz[i][j];
         }
     }
     
-    // Mostrar la matriz completa
-    cout << "\nLa matriz completa es:\n";
-    for(i = 0; i < 3; i++) {
-        for(j = 0; j < 3; j++) {
-            cout << matriz[i][j] << " ";
+    // Mostrar la matriz completa con formato mejorado
+    cout << "\n📊 MATRIZ COMPLETA:\n";
+    cout << "================\n\n";
+    
+    // Mostrar encabezados de columnas
+    cout << "    ";
+    for(int j = 0; j < COLUMNAS; j++) {
+        cout << setw(5) << j << " ";
+    }
+    cout << "\n    ";
+    
+    // Línea separadora
+    for(int j = 0; j < COLUMNAS; j++) {
+        cout << "------";
+    }
+    cout << "\n";
+    
+    // Mostrar filas con índices
+    for(int i = 0; i < FILAS; i++) {
+        cout << setw(2) << i << " |";
+        for(int j = 0; j < COLUMNAS; j++) {
+            cout << setw(5) << matriz[i][j] << " ";
         }
-        cout << endl;
+        cout << "\n";
     }
     
-    // Mostrar la diagonal principal
-    cout << "\nLa diagonal principal es:\n";
-    for(i = 0; i < 3; i++) {
-        cout << matriz[i][i] << " ";
+    // Mostrar la diagonal principal con formato visual
+    cout << "\n🎯 DIAGONAL PRINCIPAL:\n";
+    cout << "===================\n\n";
+    
+    for(int i = 0; i < FILAS; i++) {
+        // Espacios en blanco antes del número (para visualizar la diagonal)
+        for(int espacio = 0; espacio < i; espacio++) {
+            cout << "     ";
+        }
+        cout << "[" << matriz[i][i] << "]\n";
     }
-    cout << endl;
+    
+    // Mostrar solo los elementos de la diagonal en forma de vector
+    cout << "\n📊 Elementos de la diagonal: [ ";
+    for(int i = 0; i < FILAS; i++) {
+        cout << matriz[i][i];
+        if(i < FILAS - 1) cout << ", ";
+    }
+    cout << " ]\n\n";
     
     return 0;
 } 

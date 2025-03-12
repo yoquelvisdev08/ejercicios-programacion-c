@@ -61,6 +61,31 @@ string formatearSalario(float salario) {
     return string(buffer);
 }
 
+// Función para validar el salario (mayor que cero)
+float pedirSalario(const char* mensaje) {
+    float salario;
+    bool valido = false;
+    
+    do {
+        cout << mensaje;
+        cin >> salario;
+        
+        if(cin.fail()) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "\n⚠️ Error: Por favor ingrese un número válido para el salario.\n\n";
+        }
+        else if(salario <= 0) {
+            cout << "\n⚠️ Error: El salario debe ser mayor que 0.\n\n";
+        }
+        else {
+            valido = true;
+        }
+    } while(!valido);
+    
+    return salario;
+}
+
 int main() {
     int n;
     Empleado *empleados;
@@ -76,14 +101,24 @@ int main() {
     cout << "👥 REGISTRO DE EMPLEADOS\n";
     cout << "=======================\n\n";
     
-    // Pedir cantidad de empleados
+    // Pedir cantidad de empleados con validación mejorada
+    bool cantidad_valida = false;
     do {
         cout << "📋 Número de empleados a registrar: ";
         cin >> n;
-        if(n <= 0) {
-            cout << "❌ Error: Debe registrar al menos un empleado\n\n";
+        
+        if(cin.fail()) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "\n⚠️ Error: Por favor ingrese un número válido.\n\n";
         }
-    } while(n <= 0);
+        else if(n <= 0) {
+            cout << "\n⚠️ Error: Debe registrar al menos un empleado.\n\n";
+        }
+        else {
+            cantidad_valida = true;
+        }
+    } while(!cantidad_valida);
     
     // Crear el arreglo dinámico
     empleados = new Empleado[n];
@@ -100,16 +135,15 @@ int main() {
         cout << "📝 Nombre: ";
         cin.getline(empleados[i].nombre, 50, '\n');
         
+        cout << "\n"; // Salto de línea entre inputs
+        
         cout << "💼 Cargo: ";
         cin.getline(empleados[i].cargo, 30, '\n');
         
-        do {
-            cout << "💰 Salario: $";
-            cin >> empleados[i].salario;
-            if(empleados[i].salario <= 0) {
-                cout << "❌ Error: El salario debe ser mayor que 0\n";
-            }
-        } while(empleados[i].salario <= 0);
+        cout << "\n"; // Salto de línea entre inputs
+        
+        // Usar la función para validar el salario
+        empleados[i].salario = pedirSalario("💰 Salario: $");
         
         // Verificar salarios extremos
         if(empleados[i].salario > mayor_salario) {
@@ -151,10 +185,42 @@ int main() {
     cout << "----------------\n";
     cout << "Diferencia: " << formatearSalario(mayor_salario - menor_salario) << endl;
     
+    // Añadir tabla de todos los empleados
+    cout << "\n📋 LISTA COMPLETA DE SALARIOS\n";
+    cout << "===========================\n\n";
+    
+    cout << "┌───────┬─────────────────────┬─────────────────────┬────────────────┐\n";
+    cout << "│ NUM   │ NOMBRE              │ CARGO               │ SALARIO        │\n";
+    cout << "├───────┼─────────────────────┼─────────────────────┼────────────────┤\n";
+    
+    for(int i = 0; i < n; i++) {
+        cout << "│ " << setw(5) << left << (i+1) << " │ ";
+        cout << setw(19) << left << empleados[i].nombre << " │ ";
+        cout << setw(19) << left << empleados[i].cargo << " │ ";
+        
+        // Destacar salarios extremos
+        if(i == pos_mayor) {
+            cout << "🔼 ";
+        } else if(i == pos_menor) {
+            cout << "🔽 ";
+        } else {
+            cout << "   ";
+        }
+        
+        cout << setw(11) << left << formatearSalario(empleados[i].salario) << " │\n";
+    }
+    
+    cout << "└───────┴─────────────────────┴─────────────────────┴────────────────┘\n\n";
+    
     // Liberar memoria
     delete[] empleados;
     
     cout << "\n✨ Análisis completado con éxito ✨\n\n";
+    
+    // Añadir instrucciones finales
+    cout << "Presione Enter para finalizar...";
+    cin.ignore();
+    cin.get();
     
     return 0;
 } 

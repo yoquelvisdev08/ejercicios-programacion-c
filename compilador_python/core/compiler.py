@@ -159,26 +159,55 @@ read
             # Hacer el script ejecutable
             os.chmod(script_path, 0o755)
             
-            # Abrir una nueva ventana de terminal y ejecutar el programa
+            # Configurar dimensiones específicas para la ventana (más estables)
+            dimensions = "50, 45, 1200, 800"
+            
+            # Comando AppleScript para abrir una ventana de Terminal con tamaño específico
+            # y ejecutar el script
             terminal_cmd = f"""osascript -e '
 tell application "Terminal"
-    set currentTab to do script "{script_path}"
+    do script "{script_path}"
+    set bounds of front window to {{{dimensions}}}
+    set number of rows of front window to 40
+    set number of columns of front window to 120
     activate
-    repeat
-        delay 0.1
-        if not busy of currentTab then exit repeat
-    end repeat
-    delay 0.5
-    tell currentTab
-        set windowId to id of window 1 where its tab 1 = currentTab
-    end tell
 end tell'"""
             
-            print("Esperando a que el usuario complete la ejecución...")
+            print("Abriendo terminal y ejecutando programa...")
             os.system(terminal_cmd)
             
-            # Esperar un momento para asegurar que la ventana está lista
-            time.sleep(0.5)
+            # Esperar a que el usuario interactúe con el programa
+            print("Esperando a que el usuario complete la ejecución...")
+            time.sleep(2)  # Dar tiempo para que la ventana se abra completamente
+            
+            # Script para verificar si el Terminal sigue ocupado
+            check_busy_script = """osascript -e '
+tell application "Terminal"
+    set isBusy to false
+    repeat with w in windows
+        repeat with t in tabs of w
+            if busy of t then
+                set isBusy to true
+                exit repeat
+            end if
+        end repeat
+        if isBusy then exit repeat
+    end repeat
+    return isBusy
+end tell'"""
+            
+            # Esperar hasta que el Terminal ya no esté ocupado (programa terminado)
+            max_wait = 30  # Tiempo máximo de espera en segundos
+            wait_time = 0
+            while wait_time < max_wait:
+                result = os.popen(check_busy_script).read().strip()
+                if result == "false":
+                    break
+                time.sleep(1)
+                wait_time += 1
+            
+            # Dar tiempo para que la ventana se estabilice
+            time.sleep(1)
             
             # Tomar la captura de la ventana de Terminal
             screenshot_taken = take_terminal_screenshot(
@@ -186,10 +215,10 @@ end tell'"""
                 "Terminal"
             )
             
-            # Cerrar la ventana de Terminal después de la captura
+            # Comando para cerrar la ventana después de la captura
             close_cmd = """osascript -e '
 tell application "Terminal"
-    close window 1
+    close front window
 end tell'"""
             os.system(close_cmd)
             
@@ -275,8 +304,13 @@ Flags: {' '.join(self.flags)}
 Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 Estado: {'Ejecución exitosa' if execution_result['success'] else 'Error en ejecución'}
 Salida:
-{execution_result.get('stdout', '')}
-{f'Error:\n{execution_result.get("stderr", "")}' if execution_result.get("stderr") else ''}"""
+{execution_result.get('stdout', '')}"""
+            
+            # Añadir error si existe
+            if execution_result.get("stderr"):
+                compiler_info += f"""
+Error:
+{execution_result.get("stderr", "")}"""
             
             self.pdf.add_program(
                 name_without_ext,
