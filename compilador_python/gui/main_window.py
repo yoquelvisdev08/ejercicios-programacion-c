@@ -3,24 +3,60 @@ Ventana principal de la interfaz gráfica del compilador.
 """
 
 import os
-import tkinter as tk
-from tkinter import ttk, messagebox
-import tkinter.filedialog as filedialog
-from tkinter import scrolledtext
-from datetime import datetime
+import sys
+import time
+import traceback
 import threading
 import queue
-import traceback
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+import tkinter.scrolledtext as scrolledtext
+from datetime import datetime
+import platform
 
-try:
-    import tkinterdnd2
-    DRAG_DROP_SUPPORT = True
-except ImportError:
-    DRAG_DROP_SUPPORT = False
-    print("Advertencia: No se pudo importar tkinterdnd2. El arrastrar y soltar no estará disponible.")
-
-from config.settings import GUI_CONFIG, COMPILER_CONFIG
+from config.settings import GUI_CONFIG, COMPILER_CONFIG, TEMP_DIR, OUTPUT_DIR
 from core.compiler import CppCompiler
+
+# Intentar importar ttkbootstrap si está disponible
+try:
+    import ttkbootstrap as ttk
+    from ttkbootstrap.constants import *
+    USING_TTKBOOTSTRAP = True
+    print("Usando ttkbootstrap para una interfaz moderna")
+except ImportError:
+    USING_TTKBOOTSTRAP = False
+    print("ttkbootstrap no disponible, usando interfaz estándar")
+    
+# Verificar si estamos en Apple Silicon
+IS_APPLE_SILICON = platform.system() == "Darwin" and platform.machine() == "arm64"
+
+# Intentar importar tkinterdnd2 si no estamos en Apple Silicon
+# (es incompatible con ARM64 en macOS)
+if not IS_APPLE_SILICON:
+    try:
+        from tkinterdnd2 import TkinterDnD, DND_FILES
+        USING_DRAG_DROP = True
+    except ImportError:
+        USING_DRAG_DROP = False
+        print("tkinterdnd2 no disponible, arrastrar y soltar desactivado")
+else:
+    USING_DRAG_DROP = False
+    print("Ejecutando en Apple Silicon - Drag and drop desactivado para compatibilidad")
+
+def create_button(parent, text, command, style=None, side=None, padx=None, fill=None, pady=None, **kwargs):
+    """Crea un botón utilizando ttkbootstrap o ttk según disponibilidad."""
+    if USING_TTKBOOTSTRAP:
+        btn = ttk.Button(parent, text=text, bootstyle=style, command=command, **kwargs)
+    else:
+        btn = ttk.Button(parent, text=text, command=command, **kwargs)
+    
+    if side is not None:
+        if fill is not None:
+            btn.pack(side=side, padx=padx, fill=fill, pady=pady)
+        else:
+            btn.pack(side=side, padx=padx, pady=pady)
+    
+    return btn
 
 class CompilerGUI:
     """Ventana principal del compilador C++."""
@@ -28,91 +64,187 @@ class CompilerGUI:
     def __init__(self):
         """Inicializar la ventana principal."""
         # Crear la ventana principal
-        if DRAG_DROP_SUPPORT:
-            self.root = tkinterdnd2.TkinterDnD.Tk()
+        if USING_TTKBOOTSTRAP:
+            if USING_DRAG_DROP:
+                self.root = TkinterDnD.Tk()
+                self.style = ttk.Style(theme=GUI_CONFIG["bootstrap_theme"])
+            else:
+                self.root = ttk.Window(themename=GUI_CONFIG["bootstrap_theme"])
         else:
-            self.root = tk.Tk()
+            if USING_DRAG_DROP:
+                self.root = TkinterDnD.Tk()
+            else:
+                self.root = tk.Tk()
         
         self.setup_window()
+        self.setup_styles()
         self.create_widgets()
         self.setup_compiler()
         
         # Cola para capturas de pantalla
         self.screenshot_queue = queue.Queue()
+        
+        # Nuevo atributo para controlar el estado de la GUI
+        self.gui_closed = False
     
     def setup_window(self):
         """Configura la ventana principal."""
+        # Establecer título y tamaño
         self.root.title("Compilador C++ Avanzado")
-        self.root.geometry("1000x700")
-        self.root.minsize(800, 600)
         
-        # Configurar tema
-        self.root.configure(bg='#1a202c')
-        style = ttk.Style()
-        style.configure("Main.TFrame", background='#1a202c')
-        style.configure("Card.TFrame", background='#2d3748')
+        # Usar valores predeterminados si no están definidos en GUI_CONFIG
+        window_width = GUI_CONFIG.get('window_width', 1200)
+        window_height = GUI_CONFIG.get('window_height', 800)
+        self.root.geometry(f"{window_width}x{window_height}")
         
-        # Estilos para etiquetas
-        style.configure("Header.TLabel",
-                       font=('Helvetica', 20, 'bold'),
-                       foreground='#63b3ed',
-                       background='#1a202c')
+        # Agregar icono si está disponible
+        if 'icon_path' in GUI_CONFIG and os.path.exists(GUI_CONFIG['icon_path']):
+            try:
+                icon = tk.PhotoImage(file=GUI_CONFIG['icon_path'])
+                self.root.iconphoto(True, icon)
+            except Exception as e:
+                print(f"No se pudo cargar el icono: {e}")
         
-        style.configure("Subheader.TLabel",
-                       font=('Helvetica', 11),
-                       foreground='#a0aec0',
-                       background='#1a202c')
+        # Registrar el manejador para el cierre de la ventana
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         
-        # Estilo para botones
-        style.configure("Compile.TButton",
-                       font=('Helvetica', 11, 'bold'),
-                       padding=10)
-        
-        # Estilo para entradas de texto
-        style.configure("Config.TEntry",
-                       fieldbackground='#2d3748',
-                       foreground='#e2e8f0')
-        
-        # Estilo para pestañas
-        style.configure("TNotebook", background='#1a202c')
-        style.configure("TNotebook.Tab", 
-                      font=('Helvetica', 11),
-                      padding=[10, 5],
-                      background='#2d3748',
-                      foreground='#e2e8f0')
-        style.map("TNotebook.Tab",
-                background=[("selected", '#4a5568')],
-                foreground=[("selected", '#ffffff')])
+        # Configurar tema oscuro
+        if not USING_TTKBOOTSTRAP:
+            # Verificar que 'theme' y 'background' existen
+            if 'theme' in GUI_CONFIG and 'background' in GUI_CONFIG['theme']:
+                self.root.configure(bg=GUI_CONFIG['theme']['background'])
+            else:
+                # Usar un color predeterminado
+                self.root.configure(bg='#2c3e50')
+    
+    def on_close(self):
+        """Manejador para el cierre de la ventana."""
+        self.gui_closed = True
+        self.root.destroy()
+    
+    def setup_styles(self):
+        """Configura los estilos personalizados."""
+        if not USING_TTKBOOTSTRAP:
+            style = ttk.Style()
+            
+            # Configurar colores base
+            style.configure(".", 
+                          background=GUI_CONFIG['theme']['background'],
+                          foreground=GUI_CONFIG['theme']['text'],
+                          font=(GUI_CONFIG['font_family'], 10))
+            
+            # Frames
+            style.configure("Main.TFrame", 
+                          background=GUI_CONFIG['theme']['background'])
+            style.configure("Card.TFrame", 
+                          background=GUI_CONFIG['theme']['card_bg'])
+            
+            # Etiquetas
+            style.configure("Header.TLabel",
+                          font=(GUI_CONFIG['font_family'], 20, 'bold'),
+                          foreground=GUI_CONFIG['theme']['text'],
+                          background=GUI_CONFIG['theme']['background'])
+            
+            style.configure("Subheader.TLabel",
+                          font=(GUI_CONFIG['font_family'], 11),
+                          foreground=GUI_CONFIG['theme']['text_secondary'],
+                          background=GUI_CONFIG['theme']['background'])
+            
+            # Botones
+            style.configure("Compile.TButton",
+                          font=(GUI_CONFIG['font_family'], 11, 'bold'),
+                          padding=10,
+                          background=GUI_CONFIG['theme']['primary'])
+            
+            # Entradas
+            style.configure("Config.TEntry",
+                          fieldbackground=GUI_CONFIG['theme']['input_bg'],
+                          foreground=GUI_CONFIG['theme']['text'])
+            
+            # Pestañas
+            style.configure("TNotebook", 
+                          background=GUI_CONFIG['theme']['background'])
+            style.configure("TNotebook.Tab",
+                          font=(GUI_CONFIG['font_family'], 11),
+                          padding=[10, 5],
+                          background=GUI_CONFIG['theme']['card_bg'],
+                          foreground=GUI_CONFIG['theme']['text'])
+            style.map("TNotebook.Tab",
+                     background=[("selected", GUI_CONFIG['theme']['active'])],
+                     foreground=[("selected", GUI_CONFIG['theme']['primary'])])
     
     def create_widgets(self):
         """Crea los widgets de la interfaz."""
         # Frame principal
-        main_frame = ttk.Frame(self.root, style="Main.TFrame")
+        if USING_TTKBOOTSTRAP:
+            main_frame = ttk.Frame(self.root, bootstyle="dark")
+        else:
+            main_frame = ttk.Frame(self.root, style="Main.TFrame")
         main_frame.pack(fill="both", expand=True, padx=20, pady=20)
         
         # Título
         header_frame = ttk.Frame(main_frame, style="Main.TFrame")
         header_frame.pack(fill="x", pady=(0, 20))
         
-        ttk.Label(header_frame,
-                 text="✨ Compilador C++ Avanzado",
-                 style="Header.TLabel").pack(anchor="w")
+        if USING_TTKBOOTSTRAP:
+            ttk.Label(
+                header_frame,
+                text="Compilador C++ Avanzado",
+                font=(GUI_CONFIG['font_family'], 24, 'bold'),
+                bootstyle="inverse-dark"
+            ).pack(anchor="w")
+            
+            ttk.Label(
+                header_frame,
+                text="Compile, pruebe y documente sus programas C++ fácilmente",
+                font=(GUI_CONFIG['font_family'], 12),
+                bootstyle="secondary"
+            ).pack(anchor="w")
+        else:
+            ttk.Label(header_frame,
+                    text="✨ Compilador C++ Avanzado",
+                    style="Header.TLabel").pack(anchor="w")
+            
+            ttk.Label(header_frame,
+                    text="Compile, pruebe y documente sus programas C++ de forma sencilla",
+                    style="Subheader.TLabel").pack(anchor="w")
         
-        ttk.Label(header_frame,
-                 text="Compile, pruebe y documente sus programas C++ de forma sencilla",
-                 style="Subheader.TLabel").pack(anchor="w")
+        # Crear frame para botones de herramientas
+        tools_frame = ttk.Frame(header_frame)
+        tools_frame.pack(anchor="e", pady=(5, 0))
+        
+        # Botón para limpiar archivos temporales
+        if USING_TTKBOOTSTRAP:
+            self.clean_button = create_button(
+                tools_frame,
+                text="Limpiar Temporales",
+                style="outline-warning",
+                command=self.clean_temp_files,
+                side="right", 
+                padx=5
+            )
+        else:
+            self.clean_button = ttk.Button(
+                tools_frame,
+                text="🧹 Limpiar Temporales",
+                command=self.clean_temp_files
+            )
+            self.clean_button.pack(side="right", padx=5)
         
         # Crear notebook (pestañas)
-        self.notebook = ttk.Notebook(main_frame)
+        if USING_TTKBOOTSTRAP:
+            self.notebook = ttk.Notebook(main_frame, bootstyle="primary")
+        else:
+            self.notebook = ttk.Notebook(main_frame)
         self.notebook.pack(fill="both", expand=True)
         
         # Crear pestaña de compilación individual
-        self.single_tab = ttk.Frame(self.notebook, style="Main.TFrame")
-        self.notebook.add(self.single_tab, text="📄 Compilación Individual")
+        self.single_tab = ttk.Frame(self.notebook)
+        self.notebook.add(self.single_tab, text="Compilación Individual")
         
         # Crear pestaña de compilación por lotes
-        self.batch_tab = ttk.Frame(self.notebook, style="Main.TFrame")
-        self.notebook.add(self.batch_tab, text="📚 Compilación por Lotes")
+        self.batch_tab = ttk.Frame(self.notebook)
+        self.notebook.add(self.batch_tab, text="Compilación por Lotes")
         
         # Configurar pestaña de compilación individual
         self.setup_single_compilation_tab()
@@ -122,177 +254,355 @@ class CompilerGUI:
         
         # Barra de estado
         self.status_var = tk.StringVar(value="Listo")
-        status_bar = ttk.Label(
-            self.root,
-            textvariable=self.status_var,
-            relief=tk.SUNKEN,
-            padding=5
-        )
+        if USING_TTKBOOTSTRAP:
+            status_bar = ttk.Label(
+                self.root,
+                textvariable=self.status_var,
+                bootstyle="secondary",
+                relief="sunken",
+                padding=5
+            )
+        else:
+            status_bar = ttk.Label(
+                self.root,
+                textvariable=self.status_var,
+                relief=tk.SUNKEN,
+                padding=5
+            )
         status_bar.pack(fill=tk.X, side=tk.BOTTOM)
     
     def setup_single_compilation_tab(self):
         """Configura la pestaña de compilación individual."""
         # Panel izquierdo
-        left_panel = ttk.Frame(self.single_tab, style="Card.TFrame")
+        if USING_TTKBOOTSTRAP:
+            left_panel = ttk.Frame(self.single_tab, bootstyle="dark")
+        else:
+            left_panel = ttk.Frame(self.single_tab, style="Card.TFrame")
         left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10))
         
         # Configuración del compilador
-        config_frame = ttk.LabelFrame(left_panel, text="⚙️ Configuración", padding=10)
+        if USING_TTKBOOTSTRAP:
+            config_frame = ttk.Labelframe(left_panel, text="Configuración", padding=10, bootstyle="dark")
+        else:
+            config_frame = ttk.LabelFrame(left_panel, text="⚙️ Configuración", padding=10)
         config_frame.pack(fill="x", pady=(0, 10))
         
         # Variables de configuración
         self.compiler_var = tk.StringVar(value=COMPILER_CONFIG["compiler"])
         self.flags_var = tk.StringVar(value=" ".join(COMPILER_CONFIG["flags"]))
         self.timeout_var = tk.StringVar(value=str(COMPILER_CONFIG["timeout"]))
+        self.autoclean_var = tk.BooleanVar(value=True)  # Variable para limpieza automática
         
         # Grid de configuración
-        ttk.Label(config_frame, text="🔧 Compilador:").grid(row=0, column=0, sticky="w", padx=5, pady=2)
-        ttk.Entry(config_frame, textvariable=self.compiler_var, style="Config.TEntry").grid(row=0, column=1, sticky="ew", padx=5, pady=2)
-        
-        ttk.Label(config_frame, text="🚩 Flags:").grid(row=1, column=0, sticky="w", padx=5, pady=2)
-        ttk.Entry(config_frame, textvariable=self.flags_var, style="Config.TEntry").grid(row=1, column=1, sticky="ew", padx=5, pady=2)
-        
-        ttk.Label(config_frame, text="⏱️ Timeout:").grid(row=2, column=0, sticky="w", padx=5, pady=2)
-        ttk.Entry(config_frame, textvariable=self.timeout_var, style="Config.TEntry").grid(row=2, column=1, sticky="ew", padx=5, pady=2)
+        if USING_TTKBOOTSTRAP:
+            ttk.Label(config_frame, text="Compilador:", bootstyle="primary").grid(row=0, column=0, sticky="w", padx=5, pady=2)
+            ttk.Entry(config_frame, textvariable=self.compiler_var, bootstyle="primary").grid(row=0, column=1, sticky="ew", padx=5, pady=2)
+            
+            ttk.Label(config_frame, text="Flags:", bootstyle="primary").grid(row=1, column=0, sticky="w", padx=5, pady=2)
+            ttk.Entry(config_frame, textvariable=self.flags_var, bootstyle="primary").grid(row=1, column=1, sticky="ew", padx=5, pady=2)
+            
+            ttk.Label(config_frame, text="Timeout:", bootstyle="primary").grid(row=2, column=0, sticky="w", padx=5, pady=2)
+            ttk.Entry(config_frame, textvariable=self.timeout_var, bootstyle="primary").grid(row=2, column=1, sticky="ew", padx=5, pady=2)
+            
+            # Opción para limpiar archivos temporales
+            ttk.Checkbutton(
+                config_frame, 
+                text="Limpiar archivos temporales", 
+                variable=self.autoclean_var,
+                bootstyle="primary-round-toggle"
+            ).grid(row=3, column=0, columnspan=2, sticky="w", padx=5, pady=5)
+        else:
+            ttk.Label(config_frame, text="🔧 Compilador:").grid(row=0, column=0, sticky="w", padx=5, pady=2)
+            ttk.Entry(config_frame, textvariable=self.compiler_var, style="Config.TEntry").grid(row=0, column=1, sticky="ew", padx=5, pady=2)
+            
+            ttk.Label(config_frame, text="🚩 Flags:").grid(row=1, column=0, sticky="w", padx=5, pady=2)
+            ttk.Entry(config_frame, textvariable=self.flags_var, style="Config.TEntry").grid(row=1, column=1, sticky="ew", padx=5, pady=2)
+            
+            ttk.Label(config_frame, text="⏱️ Timeout:").grid(row=2, column=0, sticky="w", padx=5, pady=2)
+            ttk.Entry(config_frame, textvariable=self.timeout_var, style="Config.TEntry").grid(row=2, column=1, sticky="ew", padx=5, pady=2)
+            
+            # Opción para limpiar archivos temporales
+            ttk.Checkbutton(
+                config_frame, 
+                text="🧹 Limpiar archivos temporales", 
+                variable=self.autoclean_var,
+                style="TCheckbutton"
+            ).grid(row=3, column=0, columnspan=2, sticky="w", padx=5, pady=5)
         
         config_frame.columnconfigure(1, weight=1)
         
         # Área de archivos
-        files_frame = ttk.LabelFrame(left_panel, text="📄 Archivos", padding=10)
+        if USING_TTKBOOTSTRAP:
+            files_frame = ttk.Labelframe(left_panel, text="Archivos", padding=10, bootstyle="primary")
+        else:
+            files_frame = ttk.LabelFrame(left_panel, text="📄 Archivos", padding=10)
         files_frame.pack(fill="both", expand=True)
         
         # Área de arrastrar y soltar
-        drop_text = "🔄 Arrastre archivos .cpp aquí" if DRAG_DROP_SUPPORT else "📎 Use el botón 'Añadir Archivos'"
-        self.drop_target = tk.Text(files_frame,
-                                 height=5,
-                                 font=('Helvetica', 10),
-                                 bg='#2d3748',
-                                 fg='#e2e8f0',
-                                 relief="flat")
+        drop_text = "Arrastre archivos .cpp aquí" if USING_DRAG_DROP else "Use el botón 'Añadir Archivos'"
+        
+        if USING_TTKBOOTSTRAP:
+            self.drop_target = tk.Text(files_frame,
+                                    height=5,
+                                    font=('Roboto', 10),
+                                    bg='#f8f9fa',
+                                    fg='#495057')
+        else:
+            self.drop_target = tk.Text(files_frame,
+                                    height=5,
+                                    font=('Helvetica', 10),
+                                    bg='#f8f9fa',
+                                    fg='#495057',
+                                    relief="flat")
         self.drop_target.insert("1.0", drop_text)
         self.drop_target.configure(state="disabled")
         self.drop_target.pack(fill="both", expand=True, pady=(0, 10))
         
-        if DRAG_DROP_SUPPORT:
+        if USING_DRAG_DROP:
             self.drop_target.drop_target_register('DND_Files')
             self.drop_target.dnd_bind('<<Drop>>', self.on_drop)
         
         # Lista de archivos
-        self.files_list = tk.Listbox(files_frame,
-                                   height=10,
-                                   font=('Helvetica', 10),
-                                   bg='#2d3748',
-                                   fg='#e2e8f0',
-                                   selectmode=tk.MULTIPLE,
-                                   relief="flat")
+        if USING_TTKBOOTSTRAP:
+            self.files_list = ttk.Treeview(files_frame, 
+                                        columns=("path",),
+                                        show="headings",
+                                        height=8,
+                                        bootstyle="primary")
+            self.files_list.heading("path", text="Ruta del archivo")
+            self.files_list.column("path", width=300)
+        else:
+            self.files_list = tk.Listbox(files_frame,
+                                    height=10,
+                                    font=('Helvetica', 10),
+                                    bg='#f8f9fa',
+                                    fg='#495057',
+                                    selectmode=tk.MULTIPLE,
+                                    relief="flat")
         self.files_list.pack(fill="both", expand=True)
         
         # Botones de archivos
         buttons_frame = ttk.Frame(files_frame)
         buttons_frame.pack(fill="x", pady=(10, 0))
         
-        ttk.Button(buttons_frame,
-                  text="📥 Añadir Archivos",
-                  command=self.add_files).pack(side="left", padx=2)
-        
-        ttk.Button(buttons_frame,
-                  text="🗑️ Eliminar",
-                  command=self.remove_selected).pack(side="left", padx=2)
-        
-        ttk.Button(buttons_frame,
-                  text="🧹 Limpiar Todo",
-                  command=self.clear_files).pack(side="left", padx=2)
+        if USING_TTKBOOTSTRAP:
+            ttk.Button(buttons_frame,
+                    text="Añadir Archivos",
+                    bootstyle="outline-primary",
+                    command=self.add_files).pack(side="left", padx=2)
+            
+            ttk.Button(buttons_frame,
+                    text="Eliminar",
+                    bootstyle="outline-danger",
+                    command=self.remove_selected).pack(side="left", padx=2)
+            
+            ttk.Button(buttons_frame,
+                    text="Limpiar Todo",
+                    bootstyle="outline-warning",
+                    command=self.clear_files).pack(side="left", padx=2)
+        else:
+            ttk.Button(buttons_frame,
+                    text="📥 Añadir Archivos",
+                    command=self.add_files).pack(side="left", padx=2)
+            
+            ttk.Button(buttons_frame,
+                    text="🗑️ Eliminar",
+                    command=self.remove_selected).pack(side="left", padx=2)
+            
+            ttk.Button(buttons_frame,
+                    text="🧹 Limpiar Todo",
+                    command=self.clear_files).pack(side="left", padx=2)
         
         # Frame para los botones de compilación
         compile_buttons_frame = ttk.Frame(left_panel)
         compile_buttons_frame.pack(fill="x", pady=10)
         
         # Botón solo compilar
-        compile_only_button = ttk.Button(compile_buttons_frame,
-                                text="🔨 Solo Compilar",
-                                command=self.compile_files_only,
-                                style="Compile.TButton")
+        if USING_TTKBOOTSTRAP:
+            compile_only_button = ttk.Button(compile_buttons_frame,
+                                        text="Solo Compilar",
+                                        bootstyle="success-outline",
+                                        command=self.compile_files_only)
+        else:
+            compile_only_button = ttk.Button(compile_buttons_frame,
+                                    text="🔨 Solo Compilar",
+                                    command=self.compile_files_only,
+                                    style="Compile.TButton")
         compile_only_button.pack(fill="x", pady=(0, 5))
         
         # Botón de compilación con PDF
-        compile_pdf_button = ttk.Button(compile_buttons_frame,
-                                  text="🚀 Compilar y Generar PDF",
-                                  command=self.compile_files,
-                                  style="Compile.TButton")
+        if USING_TTKBOOTSTRAP:
+            compile_pdf_button = ttk.Button(compile_buttons_frame,
+                                        text="Compilar y Generar PDF",
+                                        bootstyle="success",
+                                        command=self.compile_files)
+        else:
+            compile_pdf_button = ttk.Button(compile_buttons_frame,
+                                    text="🚀 Compilar y Generar PDF",
+                                    command=self.compile_files,
+                                    style="Compile.TButton")
         compile_pdf_button.pack(fill="x")
         
         # Panel derecho (log)
-        right_panel = ttk.Frame(self.single_tab, style="Card.TFrame")
+        if USING_TTKBOOTSTRAP:
+            right_panel = ttk.Frame(self.single_tab, bootstyle="light")
+        else:
+            right_panel = ttk.Frame(self.single_tab, style="Card.TFrame")
         right_panel.pack(side="right", fill="both", expand=True)
         
         # Área de log
-        log_frame = ttk.LabelFrame(right_panel, text="📊 Registro de Operaciones", padding=10)
+        if USING_TTKBOOTSTRAP:
+            log_frame = ttk.Labelframe(right_panel, text="Registro de Operaciones", padding=10, bootstyle="primary")
+        else:
+            log_frame = ttk.LabelFrame(right_panel, text="📊 Registro de Operaciones", padding=10)
         log_frame.pack(fill="both", expand=True)
         
-        self.log_text = scrolledtext.ScrolledText(
-            log_frame,
-            wrap=tk.WORD,
-            font=('Consolas', 10),
-            bg='#1a202c',
-            fg='#e2e8f0'
-        )
+        if USING_TTKBOOTSTRAP:
+            try:
+                self.log_text = ScrolledText(
+                    log_frame,
+                    font=(GUI_CONFIG['code_font_family'], 9),
+                    autohide=True,
+                    bootstyle="dark"
+                )
+            except:
+                # Fallback si hay error con la importación
+                self.log_text = scrolledtext.ScrolledText(
+                    log_frame,
+                    wrap=tk.WORD,
+                    font=(GUI_CONFIG['code_font_family'], 10),
+                    bg=GUI_CONFIG['theme']['card_bg'],
+                    fg=GUI_CONFIG['theme']['text']
+                )
         self.log_text.pack(fill="both", expand=True)
         
         # Barra de progreso
         self.progress_var = tk.DoubleVar()
-        self.progress_bar = ttk.Progressbar(
-            log_frame,
-            variable=self.progress_var,
-            maximum=100,
-            mode='determinate'
-        )
+        if USING_TTKBOOTSTRAP:
+            self.progress_bar = ttk.Progressbar(
+                log_frame,
+                variable=self.progress_var,
+                maximum=100,
+                bootstyle="success-striped"
+            )
+        else:
+            self.progress_bar = ttk.Progressbar(
+                log_frame,
+                variable=self.progress_var,
+                maximum=100,
+                mode='determinate'
+            )
         self.progress_bar.pack(fill="x", pady=(10, 0))
     
     def setup_batch_compilation_tab(self):
         """Configura la pestaña de compilación por lotes."""
         # Panel izquierdo
-        left_panel = ttk.Frame(self.batch_tab, style="Card.TFrame")
+        if USING_TTKBOOTSTRAP:
+            left_panel = ttk.Frame(self.batch_tab, bootstyle="light")
+        else:
+            left_panel = ttk.Frame(self.batch_tab, style="Card.TFrame")
         left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10))
         
-        # Configuración de carpeta
-        folder_frame = ttk.LabelFrame(left_panel, text="📁 Carpeta de Proyectos", padding=10)
-        folder_frame.pack(fill="x", pady=(0, 10))
+        # Configuración de búsqueda
+        if USING_TTKBOOTSTRAP:
+            search_frame = ttk.Labelframe(left_panel, text="Búsqueda de Archivos", padding=10, bootstyle="primary")
+        else:
+            search_frame = ttk.LabelFrame(left_panel, text="🔍 Búsqueda de Archivos", padding=10)
+        search_frame.pack(fill="x", pady=(0, 10))
         
-        # Variable para la carpeta
+        # Variables de configuración
         self.folder_var = tk.StringVar()
-        
-        # Widget de selección de carpeta
-        folder_entry = ttk.Entry(folder_frame, textvariable=self.folder_var, style="Config.TEntry")
-        folder_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
-        
-        ttk.Button(folder_frame,
-                  text="📂 Explorar",
-                  command=self.select_folder).pack(side="right")
-        
-        # Configuración del patrón de búsqueda
-        pattern_frame = ttk.LabelFrame(left_panel, text="🔍 Patrón de Búsqueda", padding=10)
-        pattern_frame.pack(fill="x", pady=(0, 10))
-        
-        # Variable para el patrón de búsqueda
         self.pattern_var = tk.StringVar(value="*.cpp")
+        self.recursive_var = tk.BooleanVar(value=True)
+        self.batch_autoclean_var = tk.BooleanVar(value=True)  # Variable para limpieza automática
         
-        ttk.Label(pattern_frame, text="Buscar archivos:").pack(anchor="w")
-        ttk.Entry(pattern_frame, textvariable=self.pattern_var, style="Config.TEntry").pack(fill="x", pady=5)
+        # Grid de configuración
+        if USING_TTKBOOTSTRAP:
+            ttk.Label(search_frame, text="Carpeta:", bootstyle="primary").grid(row=0, column=0, sticky="w", padx=5, pady=2)
+        else:
+            ttk.Label(search_frame, text="📁 Carpeta:").grid(row=0, column=0, sticky="w", padx=5, pady=2)
         
-        ttk.Button(pattern_frame,
-                 text="🔍 Buscar Archivos",
-                 command=self.search_files).pack(fill="x")
+        folder_frame = ttk.Frame(search_frame)
+        folder_frame.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
+        
+        if USING_TTKBOOTSTRAP:
+            ttk.Entry(folder_frame, textvariable=self.folder_var, bootstyle="primary").pack(side="left", fill="x", expand=True)
+            ttk.Button(folder_frame, text="Explorar", bootstyle="outline-primary", command=self.select_folder).pack(side="right", padx=(5, 0))
+        else:
+            ttk.Entry(folder_frame, textvariable=self.folder_var, style="Config.TEntry").pack(side="left", fill="x", expand=True)
+            ttk.Button(folder_frame, text="📂", command=self.select_folder, width=3).pack(side="right", padx=(5, 0))
+        
+        if USING_TTKBOOTSTRAP:
+            ttk.Label(search_frame, text="Patrón:", bootstyle="primary").grid(row=1, column=0, sticky="w", padx=5, pady=2)
+            ttk.Entry(search_frame, textvariable=self.pattern_var, bootstyle="primary").grid(row=1, column=1, sticky="ew", padx=5, pady=2)
+            
+            ttk.Checkbutton(
+                search_frame, 
+                text="Búsqueda recursiva", 
+                variable=self.recursive_var,
+                bootstyle="primary-round-toggle"
+            ).grid(row=2, column=0, columnspan=2, sticky="w", padx=5, pady=2)
+            
+            # Opción para limpiar archivos temporales
+            ttk.Checkbutton(
+                search_frame, 
+                text="Limpiar archivos temporales", 
+                variable=self.batch_autoclean_var,
+                bootstyle="primary-round-toggle"
+            ).grid(row=3, column=0, columnspan=2, sticky="w", padx=5, pady=5)
+            
+            # Botón de búsqueda
+            ttk.Button(search_frame, 
+                     text="Buscar Archivos", 
+                     bootstyle="primary",
+                     command=self.search_files).grid(row=4, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
+        else:
+            ttk.Label(search_frame, text="🔎 Patrón:").grid(row=1, column=0, sticky="w", padx=5, pady=2)
+            ttk.Entry(search_frame, textvariable=self.pattern_var, style="Config.TEntry").grid(row=1, column=1, sticky="ew", padx=5, pady=2)
+            
+            ttk.Checkbutton(
+                search_frame, 
+                text="🔄 Búsqueda recursiva", 
+                variable=self.recursive_var
+            ).grid(row=2, column=0, columnspan=2, sticky="w", padx=5, pady=2)
+            
+            # Opción para limpiar archivos temporales
+            ttk.Checkbutton(
+                search_frame, 
+                text="🧹 Limpiar archivos temporales", 
+                variable=self.batch_autoclean_var
+            ).grid(row=3, column=0, columnspan=2, sticky="w", padx=5, pady=5)
+            
+            # Botón de búsqueda
+            ttk.Button(search_frame, 
+                     text="🔍 Buscar Archivos", 
+                     command=self.search_files).grid(row=4, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
+        
+        search_frame.columnconfigure(1, weight=1)
         
         # Área de archivos encontrados
-        files_frame = ttk.LabelFrame(left_panel, text="📄 Archivos Encontrados", padding=10)
+        if USING_TTKBOOTSTRAP:
+            files_frame = ttk.Labelframe(left_panel, text="Archivos Encontrados", padding=10, bootstyle="primary")
+        else:
+            files_frame = ttk.LabelFrame(left_panel, text="📄 Archivos Encontrados", padding=10)
         files_frame.pack(fill="both", expand=True)
         
         # Lista de archivos
-        self.batch_files_list = tk.Listbox(files_frame,
+        if USING_TTKBOOTSTRAP:
+            self.batch_files_list = ttk.Treeview(files_frame, 
+                                            columns=("path",),
+                                            show="headings",
+                                            height=10,
+                                            bootstyle="primary",
+                                            selectmode="extended")
+            self.batch_files_list.heading("path", text="Ruta del archivo")
+            self.batch_files_list.column("path", width=300)
+        else:
+            self.batch_files_list = tk.Listbox(files_frame,
                                          height=10,
                                          font=('Helvetica', 10),
-                                         bg='#2d3748',
-                                         fg='#e2e8f0',
+                                         bg='#f8f9fa',
+                                         fg='#495057',
                                          selectmode=tk.MULTIPLE,
                                          relief="flat")
         self.batch_files_list.pack(fill="both", expand=True)
@@ -303,49 +613,101 @@ class CompilerGUI:
         
         # Etiqueta para mostrar el número de archivos
         self.files_count_var = tk.StringVar(value="0 archivos encontrados")
-        ttk.Label(info_frame, textvariable=self.files_count_var).pack(side="left")
+        if USING_TTKBOOTSTRAP:
+            ttk.Label(info_frame, textvariable=self.files_count_var, bootstyle="secondary").pack(side="left")
+        else:
+            ttk.Label(info_frame, textvariable=self.files_count_var).pack(side="left")
         
         # Botones de selección
-        ttk.Button(info_frame,
-                  text="✅ Seleccionar Todos",
-                  command=self.select_all_files).pack(side="right", padx=2)
-        
-        ttk.Button(info_frame,
-                  text="❌ Deseleccionar Todos",
-                  command=self.deselect_all_files).pack(side="right", padx=2)
+        if USING_TTKBOOTSTRAP:
+            ttk.Button(info_frame,
+                     text="Seleccionar Todos",
+                     bootstyle="outline-success",
+                     command=self.select_all_files).pack(side="right", padx=2)
+            
+            ttk.Button(info_frame,
+                     text="Deseleccionar Todos",
+                     bootstyle="outline-danger",
+                     command=self.deselect_all_files).pack(side="right", padx=2)
+        else:
+            ttk.Button(info_frame,
+                     text="✅ Seleccionar Todos",
+                     command=self.select_all_files).pack(side="right", padx=2)
+            
+            ttk.Button(info_frame,
+                     text="❌ Deseleccionar Todos",
+                     command=self.deselect_all_files).pack(side="right", padx=2)
         
         # Botón de compilación por lotes
-        compile_button = ttk.Button(left_panel,
-                                   text="🚀 Compilar Lote",
-                                   command=self.compile_batch,
-                                   style="Compile.TButton")
+        if USING_TTKBOOTSTRAP:
+            compile_button = ttk.Button(left_panel,
+                                       text="Compilar Lote",
+                                       bootstyle="success",
+                                       command=self.compile_batch)
+        else:
+            compile_button = ttk.Button(left_panel,
+                                       text="🚀 Compilar Lote",
+                                       command=self.compile_batch,
+                                       style="Compile.TButton")
         compile_button.pack(fill="x", pady=10)
         
         # Panel derecho (log)
-        right_panel = ttk.Frame(self.batch_tab, style="Card.TFrame")
+        if USING_TTKBOOTSTRAP:
+            right_panel = ttk.Frame(self.batch_tab, bootstyle="light")
+        else:
+            right_panel = ttk.Frame(self.batch_tab, style="Card.TFrame")
         right_panel.pack(side="right", fill="both", expand=True)
         
         # Área de log
-        log_frame = ttk.LabelFrame(right_panel, text="📊 Registro de Operaciones por Lotes", padding=10)
+        if USING_TTKBOOTSTRAP:
+            log_frame = ttk.Labelframe(right_panel, text="Registro de Operaciones por Lotes", padding=10, bootstyle="primary")
+        else:
+            log_frame = ttk.LabelFrame(right_panel, text="📊 Registro de Operaciones por Lotes", padding=10)
         log_frame.pack(fill="both", expand=True)
         
-        self.batch_log_text = scrolledtext.ScrolledText(
-            log_frame,
-            wrap=tk.WORD,
-            font=('Consolas', 10),
-            bg='#1a202c',
-            fg='#e2e8f0'
-        )
+        if USING_TTKBOOTSTRAP:
+            try:
+                self.batch_log_text = ScrolledText(
+                    log_frame,
+                    font=(GUI_CONFIG['code_font_family'], 9),
+                    autohide=True,
+                    bootstyle="dark"
+                )
+            except:
+                # Fallback si hay error con la importación
+                self.batch_log_text = scrolledtext.ScrolledText(
+                    log_frame,
+                    wrap=tk.WORD,
+                    font=(GUI_CONFIG['code_font_family'], 10),
+                    bg=GUI_CONFIG['theme']['card_bg'],
+                    fg=GUI_CONFIG['theme']['text']
+                )
+        else:
+            self.batch_log_text = scrolledtext.ScrolledText(
+                log_frame,
+                wrap=tk.WORD,
+                font=(GUI_CONFIG['code_font_family'], 10),
+                bg=GUI_CONFIG['theme']['card_bg'],
+                fg=GUI_CONFIG['theme']['text']
+            )
         self.batch_log_text.pack(fill="both", expand=True)
         
         # Barra de progreso
         self.batch_progress_var = tk.DoubleVar()
-        self.batch_progress_bar = ttk.Progressbar(
-            log_frame,
-            variable=self.batch_progress_var,
-            maximum=100,
-            mode='determinate'
-        )
+        if USING_TTKBOOTSTRAP:
+            self.batch_progress_bar = ttk.Progressbar(
+                log_frame,
+                variable=self.batch_progress_var,
+                maximum=100,
+                bootstyle="success-striped"
+            )
+        else:
+            self.batch_progress_bar = ttk.Progressbar(
+                log_frame,
+                variable=self.batch_progress_var,
+                maximum=100,
+                mode='determinate'
+            )
         self.batch_progress_bar.pack(fill="x", pady=(10, 0))
     
     def setup_compiler(self):
@@ -375,15 +737,29 @@ class CompilerGUI:
         
         # Buscar archivos según el patrón
         self.batch_log(f"Buscando archivos {pattern} en {folder}...")
-        files = glob.glob(os.path.join(folder, pattern), recursive=True)
+        
+        if self.recursive_var.get():
+            if not pattern.startswith("**/"):
+                pattern = os.path.join("**", pattern)
+            files = glob.glob(os.path.join(folder, pattern), recursive=True)
+        else:
+            files = glob.glob(os.path.join(folder, pattern), recursive=False)
         
         # Actualizar la lista
-        self.batch_files_list.delete(0, tk.END)
+        if USING_TTKBOOTSTRAP:
+            for item in self.batch_files_list.get_children():
+                self.batch_files_list.delete(item)
+        else:
+            self.batch_files_list.delete(0, tk.END)
+        
         self.batch_selected_files = []
         
         for file in files:
             if os.path.isfile(file):
-                self.batch_files_list.insert(tk.END, file)
+                if USING_TTKBOOTSTRAP:
+                    self.batch_files_list.insert("", "end", values=(file,))
+                else:
+                    self.batch_files_list.insert(tk.END, file)
                 self.batch_selected_files.append(file)
         
         # Actualizar el contador de archivos
@@ -394,38 +770,78 @@ class CompilerGUI:
     
     def select_all_files(self):
         """Selecciona todos los archivos en la lista de compilación por lotes."""
-        self.batch_files_list.select_set(0, tk.END)
+        if USING_TTKBOOTSTRAP:
+            for item in self.batch_files_list.get_children():
+                self.batch_files_list.selection_add(item)
+        else:
+            self.batch_files_list.select_set(0, tk.END)
     
     def deselect_all_files(self):
         """Deselecciona todos los archivos en la lista de compilación por lotes."""
-        self.batch_files_list.selection_clear(0, tk.END)
+        if USING_TTKBOOTSTRAP:
+            for item in self.batch_files_list.get_children():
+                self.batch_files_list.selection_remove(item)
+        else:
+            self.batch_files_list.selection_clear(0, tk.END)
     
-    def batch_log(self, message):
-        """Añade un mensaje al área de log de compilación por lotes."""
+    def batch_log(self, message, level="info"):
+        """Añade un mensaje al área de log de compilación por lotes con formato.
+        
+        Args:
+            message: El mensaje a mostrar
+            level: El nivel del mensaje ("info", "success", "warning", "error")
+        """
         timestamp = datetime.now().strftime("[%H:%M:%S]")
-        self.batch_log_text.insert(tk.END, f"{timestamp} {message}\n")
+        
+        if USING_TTKBOOTSTRAP:
+            # Definir colores y prefijos según el nivel
+            if level == "success":
+                prefix = "✅ "
+                tag = "success"
+            elif level == "warning":
+                prefix = "⚠️ "
+                tag = "warning"
+            elif level == "error":
+                prefix = "❌ "
+                tag = "error"
+            else:  # info
+                prefix = "ℹ️ "
+                tag = "info"
+                
+            # Insertar texto con color
+            self.batch_log_text.insert(tk.END, f"{timestamp} ", "timestamp")
+            self.batch_log_text.insert(tk.END, f"{prefix}{message}\n", tag)
+            
+            # Configurar tags si no están definidos
+            if not hasattr(self, "batch_log_tags_configured"):
+                self.batch_log_text.tag_configure("timestamp", foreground="#6c757d")
+                self.batch_log_text.tag_configure("info", foreground="#0275d8")
+                self.batch_log_text.tag_configure("success", foreground="#5cb85c")
+                self.batch_log_text.tag_configure("warning", foreground="#f0ad4e")
+                self.batch_log_text.tag_configure("error", foreground="#d9534f")
+                self.batch_log_tags_configured = True
+        else:
+            # Versión simple para ttk estándar
+            self.batch_log_text.insert(tk.END, f"{timestamp} {message}\n")
+        
         self.batch_log_text.see(tk.END)
     
     def compile_batch(self):
         """Compila todos los archivos seleccionados en modo lote."""
-        selected_indices = self.batch_files_list.curselection()
-        if not selected_indices:
-            messagebox.showwarning("Advertencia", "Por favor, seleccione al menos un archivo para compilar.")
+        files = self.get_selected_batch_files()
+        if not files:
+            messagebox.showwarning("Advertencia", "No hay archivos seleccionados para compilar.")
             return
         
-        # Obtener los archivos seleccionados
-        files_to_compile = [self.batch_selected_files[i] for i in selected_indices]
-        
-        # Deshabilitar la interfaz durante la compilación
+        # Configurar la interfaz durante la compilación
         self.disable_interface()
+        self.batch_progress_var.set(0)
         
-        # Iniciar la compilación en un hilo separado
-        thread = threading.Thread(target=self.process_batch_files, args=(files_to_compile,))
-        thread.daemon = True
-        thread.start()
+        # Iniciar el hilo de compilación
+        threading.Thread(target=self.process_batch_files, args=(files,), daemon=True).start()
     
     def process_batch_files(self, files):
-        """Procesa un lote de archivos C++ en un hilo separado."""
+        """Procesa los archivos seleccionados en un hilo separado."""
         try:
             total_files = len(files)
             self.status_var.set(f"Compilando {total_files} archivos...")
@@ -447,21 +863,27 @@ class CompilerGUI:
                 compile_result = self.compiler.compile_file(file)
                 
                 if compile_result["success"]:
-                    self.batch_log(f"✅ Archivo compilado correctamente: {os.path.basename(file)}")
+                    self.batch_log(f"Archivo compilado correctamente: {os.path.basename(file)}", "success")
                     success_count += 1
                 else:
-                    self.batch_log(f"❌ Error al compilar: {os.path.basename(file)}")
+                    self.batch_log(f"Error al compilar: {os.path.basename(file)}", "error")
                     if "stderr" in compile_result:
                         error_text = compile_result["stderr"]
                         # Limitar la cantidad de texto de error para evitar sobrecarga
                         if len(error_text) > 500:
                             error_text = error_text[:500] + "... (mensaje truncado)"
-                        self.batch_log(f"  Error: {error_text}")
+                        self.batch_log(f"Error: {error_text}", "error")
                     error_count += 1
             
             # Compilación completada
             self.batch_progress_var.set(100)
-            self.batch_log(f"Compilación por lotes finalizada. Éxitos: {success_count}, Errores: {error_count}")
+            self.batch_log(f"Compilación por lotes finalizada. Éxitos: {success_count}, Errores: {error_count}", 
+                        "success" if error_count == 0 else "warning")
+            
+            # Limpiar archivos temporales si está habilitada
+            if self.batch_autoclean_var.get():
+                self.batch_log("Limpiando archivos temporales antiguos...", "info")
+                self.compiler.cleanup(keep_current=True)
             
             # Mostrar mensaje final según el resultado
             if error_count == 0:
@@ -472,7 +894,7 @@ class CompilerGUI:
                                     f"Se compilaron correctamente {success_count} de {total_files} archivos.")
             
         except Exception as e:
-            self.batch_log(f"❌ Error durante la compilación por lotes: {str(e)}")
+            self.batch_log(f"Error durante la compilación por lotes: {str(e)}", "error")
             traceback.print_exc()
             
         finally:
@@ -499,26 +921,76 @@ class CompilerGUI:
             if file.lower().endswith('.cpp'):
                 if file not in self.selected_files:
                     self.selected_files.append(file)
-                    self.files_list.insert(tk.END, os.path.basename(file))
+                    if USING_TTKBOOTSTRAP:
+                        item_id = self.files_list.insert("", "end", values=(file,))
+                    else:
+                        self.files_list.insert(tk.END, os.path.basename(file))
                     self.log(f"Archivo añadido: {os.path.basename(file)}")
     
     def remove_selected(self):
         """Elimina los archivos seleccionados."""
-        selected = self.files_list.curselection()
-        for index in reversed(selected):
-            self.files_list.delete(index)
-            self.selected_files.pop(index)
+        if USING_TTKBOOTSTRAP:
+            selected = self.files_list.selection()
+            for item_id in selected:
+                file_path = self.files_list.item(item_id)['values'][0]
+                self.selected_files.remove(file_path)
+                self.files_list.delete(item_id)
+        else:
+            selected = self.files_list.curselection()
+            for index in reversed(selected):
+                self.files_list.delete(index)
+                self.selected_files.pop(index)
     
     def clear_files(self):
         """Limpia la lista de archivos."""
-        self.files_list.delete(0, tk.END)
+        if USING_TTKBOOTSTRAP:
+            for item in self.files_list.get_children():
+                self.files_list.delete(item)
+        else:
+            self.files_list.delete(0, tk.END)
         self.selected_files.clear()
         self.log("Lista de archivos limpiada")
     
-    def log(self, message):
-        """Añade un mensaje al área de log."""
+    def log(self, message, level="info"):
+        """Añade un mensaje al área de log con formato y colores según el nivel.
+        
+        Args:
+            message: El mensaje a mostrar
+            level: El nivel del mensaje ("info", "success", "warning", "error")
+        """
         timestamp = datetime.now().strftime("[%H:%M:%S]")
-        self.log_text.insert(tk.END, f"{timestamp} {message}\n")
+        
+        if USING_TTKBOOTSTRAP:
+            # Definir colores y prefijos según el nivel
+            if level == "success":
+                prefix = "✅ "
+                tag = "success"
+            elif level == "warning":
+                prefix = "⚠️ "
+                tag = "warning"
+            elif level == "error":
+                prefix = "❌ "
+                tag = "error"
+            else:  # info
+                prefix = "ℹ️ "
+                tag = "info"
+                
+            # Insertar texto con color
+            self.log_text.insert(tk.END, f"{timestamp} ", "timestamp")
+            self.log_text.insert(tk.END, f"{prefix}{message}\n", tag)
+            
+            # Configurar tags si no están definidos
+            if not hasattr(self, "log_tags_configured"):
+                self.log_text.tag_configure("timestamp", foreground="#6c757d")
+                self.log_text.tag_configure("info", foreground="#0275d8")
+                self.log_text.tag_configure("success", foreground="#5cb85c")
+                self.log_text.tag_configure("warning", foreground="#f0ad4e")
+                self.log_text.tag_configure("error", foreground="#d9534f")
+                self.log_tags_configured = True
+        else:
+            # Versión simple para ttk estándar
+            self.log_text.insert(tk.END, f"{timestamp} {message}\n")
+        
         self.log_text.see(tk.END)
     
     def compile_files(self):
@@ -566,33 +1038,49 @@ class CompilerGUI:
                 result = self.compiler.process_file(file)
                 
                 if result["success"]:
-                    self.log(f"✓ Archivo procesado correctamente: {os.path.basename(file)}")
+                    self.log(f"Archivo procesado correctamente: {os.path.basename(file)}", "success")
                 else:
-                    self.log(f"✗ Error al procesar: {os.path.basename(file)}")
+                    self.log(f"Error al procesar: {os.path.basename(file)}", "error")
                     if "error" in result:
-                        self.log(f"  Error: {result['error']}")
+                        self.log(f"Error: {result['error']}", "error")
             
             # Compilación completada
             self.progress_var.set(100)
-            self.log("Generando PDF...")
+            self.log("Generando PDF...", "info")
             
-            if self.compiler.save_pdf():
-                self.log("✓ PDF generado correctamente")
-                messagebox.showinfo("Éxito", "La compilación ha finalizado correctamente y se ha generado el PDF.")
+            pdf_result = self.compiler.save_pdf()
+            if pdf_result:
+                self.log("PDF generado correctamente", "success")
             else:
-                self.log("✗ Error al generar el PDF")
-                messagebox.showerror("Error", "Ha ocurrido un error al generar el PDF.")
+                # Verificar si el PDF existe aunque el método haya reportado error
+                pdf_path = os.path.join(OUTPUT_DIR, "programas_cpp.pdf")
+                if os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 0:
+                    self.log(f"PDF generado en {pdf_path} a pesar del error reportado", "success")
+                else:
+                    self.log("Error al generar el PDF", "error")
             
-            self.compiler.cleanup()
+            # Limpiar archivos temporales si está activada la opción
+            if self.autoclean_var.get():
+                self.log("Limpiando archivos temporales antiguos...", "info")
+                try:
+                    self.compiler.cleanup(keep_current=True)
+                    self.log("Limpieza completada", "success")
+                except Exception as cleanup_error:
+                    self.log(f"Error durante la limpieza: {str(cleanup_error)}", "error")
+            
+            # Actualizar estado
+            self.status_var.set("Listo")
+            self.processing = False
+            self.restore_interface()
             
         except Exception as e:
-            self.log(f"✗ Error durante la compilación: {str(e)}")
-            traceback.print_exc()
-            
-        finally:
-            # Restaurar la interfaz
-            self.restore_interface()
-            self.status_var.set("Listo")
+            error_msg = str(e)
+            if not self.gui_closed:  # Evitar errores si la GUI ya ha sido cerrada
+                self.log(f"Error durante la compilación: {error_msg}", "error")
+                messagebox.showerror("Error", f"Ha ocurrido un error durante la compilación:\n{error_msg}")
+                self.status_var.set("Error")
+                self.processing = False
+                self.restore_interface()  # Usar restore_interface en lugar de enable_controls
     
     def disable_interface(self):
         """Deshabilita la interfaz durante la compilación."""
@@ -685,40 +1173,85 @@ class CompilerGUI:
                 compile_result = self.compiler.compile_file(file)
                 
                 if compile_result["success"]:
-                    self.log(f"✅ Archivo compilado correctamente: {os.path.basename(file)}")
+                    self.log(f"Archivo compilado correctamente: {os.path.basename(file)}", "success")
                     success_count += 1
                 else:
-                    self.log(f"❌ Error al compilar: {os.path.basename(file)}")
+                    self.log(f"Error al compilar: {os.path.basename(file)}", "error")
                     if "stderr" in compile_result:
                         error_text = compile_result["stderr"]
                         # Limitar la cantidad de texto de error para evitar sobrecarga
                         if len(error_text) > 500:
                             error_text = error_text[:500] + "... (mensaje truncado)"
-                        self.log(f"  Error: {error_text}")
+                        self.log(f"Error: {error_text}", "error")
                     error_count += 1
             
             # Compilación completada
             self.progress_var.set(100)
             
             # Mostrar mensaje de finalización
-            self.log(f"Compilación finalizada. Éxitos: {success_count}, Errores: {error_count}")
+            self.log(f"Compilación finalizada. Éxitos: {success_count}, Errores: {error_count}", 
+                    "success" if error_count == 0 else "warning")
             
             # Mostrar mensaje final según el resultado
             if error_count == 0:
                 messagebox.showinfo("Éxito", f"La compilación ha finalizado correctamente.\nSe compilaron {success_count} archivos sin errores.")
             else:
                 messagebox.showwarning("Compilación completada con errores", 
-                                   f"La compilación finalizó con {error_count} errores.\n"
-                                   f"Se compilaron correctamente {success_count} de {total_files} archivos.")
+                                    f"La compilación finalizó con {error_count} errores.\n"
+                                    f"Se compilaron correctamente {success_count} de {total_files} archivos.")
             
         except Exception as e:
-            self.log(f"❌ Error durante la compilación: {str(e)}")
+            self.log(f"Error durante la compilación: {str(e)}", "error")
             traceback.print_exc()
             
         finally:
             # Restaurar la interfaz
             self.restore_interface()
             self.status_var.set("Listo")
+    
+    def clean_temp_files(self):
+        """Limpia todos los archivos temporales."""
+        if USING_TTKBOOTSTRAP:
+            if messagebox.askyesno("Confirmar", "¿Desea eliminar todos los archivos temporales?\n\nEsto incluye capturas de pantalla y archivos compilados.", icon="question"):
+                try:
+                    self.log("Limpiando todos los archivos temporales...")
+                    self.compiler.cleanup(keep_current=False)
+                    messagebox.showinfo("Limpieza Completada", "Se han eliminado todos los archivos temporales.")
+                except Exception as e:
+                    self.log(f"Error durante la limpieza: {str(e)}")
+                    messagebox.showerror("Error", f"No se pudieron eliminar todos los archivos temporales: {str(e)}")
+        else:
+            if messagebox.askyesno("Confirmar", "¿Desea eliminar todos los archivos temporales?\nEsto incluye capturas de pantalla y archivos compilados."):
+                try:
+                    self.log("Limpiando todos los archivos temporales...")
+                    self.compiler.cleanup(keep_current=False)
+                    messagebox.showinfo("Limpieza Completada", "Se han eliminado todos los archivos temporales.")
+                except Exception as e:
+                    self.log(f"Error durante la limpieza: {str(e)}")
+                    messagebox.showerror("Error", f"No se pudieron eliminar todos los archivos temporales: {str(e)}")
+    
+    def get_selected_batch_files(self):
+        """Obtiene la lista de archivos seleccionados para compilación por lotes."""
+        files = []
+        if USING_TTKBOOTSTRAP:
+            selected_items = self.batch_files_list.selection()
+            if selected_items:
+                for item_id in selected_items:
+                    file_path = self.batch_files_list.item(item_id)['values'][0]
+                    files.append(file_path)
+            else:
+                # Si no hay selección, usar todos los archivos encontrados
+                files = self.batch_selected_files
+        else:
+            selected = self.batch_files_list.curselection()
+            if selected:
+                for index in selected:
+                    files.append(self.batch_selected_files[index])
+            else:
+                # Si no hay selección, usar todos los archivos encontrados
+                files = self.batch_selected_files
+                
+        return files
     
     def run(self):
         """Ejecuta la interfaz gráfica."""

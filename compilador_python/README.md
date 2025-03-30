@@ -90,8 +90,11 @@ El script creará automáticamente un entorno virtual e instalará todas las dep
 
 ### Opciones
 
-- `--keep-venv`: Mantener el entorno virtual existente
+- `--new-venv`: Recrear el entorno virtual e instalar todas las dependencias (útil cuando se actualizan requisitos)
+- `--keep-venv`: (Deprecado) Por compatibilidad con versiones anteriores. Este es ahora el comportamiento por defecto.
 - `--no-gui`: Ejecutar en modo consola
+- `--clean-temp`: Limpiar todos los archivos temporales y salir
+- `--keep-current`: Cuando se usa con --clean-temp, mantiene los archivos de la ejecución actual
 - Los archivos .cpp se pueden especificar como argumentos
 
 ## Estructura del Proyecto
@@ -170,6 +173,19 @@ g++ --version
 1. Verificar permisos de acceso a la pantalla
 2. Asegurar que hay suficiente espacio en disco
 3. Verificar que el directorio temporal es escribible
+
+### Demasiados archivos temporales
+
+Si el directorio `temp_compilation` acumula demasiados archivos, puede limpiarlos de varias maneras:
+
+1. Desde la interfaz gráfica: 
+   - Use el botón "🧹 Limpiar Temporales" en la barra superior
+   - Marque la opción "Limpiar archivos temporales" en la configuración para limpieza automática
+
+2. Desde la línea de comandos:
+   ```bash
+   ./run_compiler.sh --clean-temp
+   ```
 
 ### Problemas con el modo de lotes
 

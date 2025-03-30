@@ -18,17 +18,27 @@ COMPILER_CONFIG = {
 
 # Configuración de la interfaz gráfica
 GUI_CONFIG = {
-    "window_width": 900,
-    "window_height": 700,
-    "font_family": "Helvetica",
-    "code_font_family": "Consolas",
+    "window_width": 1200,
+    "window_height": 800,
+    "icon_path": os.path.join(BASE_DIR, "resources", "icon.png"),
+    "font_family": "SF Pro Display",  # Fuente moderna
+    "code_font_family": "JetBrains Mono",  # Mejor fuente para código
+    "bootstrap_theme": "darkly",  # Tema oscuro moderno
     "theme": {
-        "primary": "#3498db",    # Azul
-        "success": "#2ecc71",    # Verde
-        "warning": "#f1c40f",    # Amarillo
-        "error": "#e74c3c",      # Rojo
-        "info": "#34495e",       # Gris oscuro
-        "background": "#f5f5f5", # Gris claro
+        "primary": "#007AFF",    # Azul iOS
+        "success": "#34C759",    # Verde iOS
+        "warning": "#FF9500",    # Naranja iOS
+        "error": "#FF3B30",      # Rojo iOS
+        "info": "#5856D6",       # Violeta iOS
+        "background": "#1C1C1E", # Fondo oscuro
+        "surface": "#2C2C2E",    # Superficie de tarjetas
+        "text": "#FFFFFF",       # Texto principal
+        "text_secondary": "#8E8E93", # Texto secundario
+        "border": "#3A3A3C",     # Bordes
+        "hover": "#3A3A3C",      # Color hover
+        "active": "#48484A",     # Color active
+        "card_bg": "#2C2C2E",    # Fondo de tarjetas
+        "input_bg": "#3A3A3C",   # Fondo de inputs
     }
 }
 
@@ -40,42 +50,42 @@ SCREENSHOT_CONFIG = {
     "optimize": True,     # optimizar imagen
     "width": 800,        # ancho por defecto
     "height": 600,       # alto por defecto
-    "bg_color": "white"  # color de fondo
+    "bg_color": GUI_CONFIG["theme"]["background"]  # usar color de fondo del tema
 }
 
 # Configuración del PDF
 PDF_CONFIG = {
-    "margin": 0.5,        # pulgadas
-    "title_font_size": 16,
+    "margin": 0.75,        # pulgadas
+    "title_font_size": 18,
     "body_font_size": 12,
-    "code_font_size": 10
+    "code_font_size": 11
 }
 
 # Tipos de ejercicios y sus estilos
 EXERCISE_TYPES = {
     "vector": {
-        "icon": "🔢",
-        "color": "#3498db",
-        "bg_color": "#e8f4f8"
+        "icon": "📊",
+        "color": GUI_CONFIG["theme"]["primary"],
+        "bg_color": "#0A84FF20"  # Primary con transparencia
     },
     "matriz": {
-        "icon": "📊",
-        "color": "#2ecc71",
-        "bg_color": "#e8f8e8"
+        "icon": "🔢",
+        "color": GUI_CONFIG["theme"]["success"],
+        "bg_color": "#32D74B20"  # Success con transparencia
     },
     "cadena": {
         "icon": "📝",
-        "color": "#e74c3c",
-        "bg_color": "#f8e8e8"
+        "color": GUI_CONFIG["theme"]["warning"],
+        "bg_color": "#FF9F0A20"  # Warning con transparencia
     },
     "estructura": {
-        "icon": "📋",
-        "color": "#9b59b6",
-        "bg_color": "#f0e8f8"
+        "icon": "🏗️",
+        "color": GUI_CONFIG["theme"]["info"],
+        "bg_color": "#5E5CE120"  # Info con transparencia
     },
     "default": {
         "icon": "💻",
-        "color": "#34495e",
-        "bg_color": "#f0f0f0"
+        "color": GUI_CONFIG["theme"]["text"],
+        "bg_color": GUI_CONFIG["theme"]["card_bg"]
     }
 }
