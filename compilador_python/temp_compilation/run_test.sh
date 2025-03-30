@@ -1,10 +1,10 @@
 #!/bin/bash
 clear
 echo "=================================================="
-echo "Ejecutando: bloque6_ejercicio1"
+echo "Ejecutando: test"
 echo "=================================================="
 echo ""
-"/Users/yoquelvisabreu/Desktop/c++/compilador_python/temp_compilation/bloque6_ejercicio1" # Se agregan comillas para manejar rutas con espacios
+"/Users/yoquelvisabreu/Desktop/c++/compilador_python/temp_compilation/test" # Se agregan comillas para manejar rutas con espacios
 echo ""
 echo "=================================================="
 echo "Ejecución completada"

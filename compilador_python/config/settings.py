@@ -55,10 +55,10 @@ SCREENSHOT_CONFIG = {
 
 # Configuración del PDF
 PDF_CONFIG = {
-    "margin": 0.75,        # pulgadas
-    "title_font_size": 18,
-    "body_font_size": 12,
-    "code_font_size": 11
+    "margin": 0.5,         # pulgadas (reducido de 0.75)
+    "title_font_size": 16, # reducido de 18
+    "body_font_size": 10,  # reducido de 12
+    "code_font_size": 9    # reducido de 11
 }
 
 # Tipos de ejercicios y sus estilos
