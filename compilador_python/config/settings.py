@@ -13,7 +13,7 @@ OUTPUT_DIR = os.path.join(BASE_DIR, "output")
 COMPILER_CONFIG = {
     "compiler": "g++",
     "flags": ["-Wall", "-std=c++11"],
-    "timeout": 10  # segundos
+    "timeout": 999999  # Efectivamente infinito
 }
 
 # Configuración de la interfaz gráfica

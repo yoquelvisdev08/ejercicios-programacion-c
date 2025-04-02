@@ -1,0 +1,11 @@
+1.-  Realice un programa que determine el mayor de dos números usando un puntero a función .(tres (3) puntos)
+
+2.-  Realice un programa que sume, reste,multiplique y divida dos valores usando puntero a función. (tres (3) puntos)
+
+3.-  Realice un programa que gestione la memoria para un valor float y asigne un dato y luego libere la memoria dinamicamente. 
+
+4.- Realice un programa que  capture un valor entero  y defina un arreglo tamaño al valor capturado, gestionando dinámicamente la memoria  y use un puntero para capturalos valores del arreglo ,despliegue los datos y libere la memoria.
+
+5.- Realice un programa que defina una estructura estudiante con los datos nombre,edad, matricula y carrera defina un arraglo de estudiantes y maneje la estructura con un puntero. Capture cinco (5) estudiantes. 
+
+6.- Realice un programa que capture los datos de los empleados de una empresa y luego despliegue la información contenida en un archivo. 

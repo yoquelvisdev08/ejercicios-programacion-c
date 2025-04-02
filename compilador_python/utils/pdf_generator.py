@@ -347,12 +347,14 @@ class PDFGenerator:
         """Añade un programa al PDF con su código y captura de pantalla."""
         try:
             program_name = program_info.get('name', 'Programa sin nombre')
+            print(f"\nAgregando programa: {program_name}")
             
             # Agregar a la lista de programas para el índice
             self.programs.append({
                 'name': program_name,
                 'type': style_type or 'general'
             })
+            print(f"Programa agregado al índice. Total programas: {len(self.programs)}")
             
             # Crear elementos para la sección de código (más compactos)
             code_elements = []
@@ -372,16 +374,17 @@ class PDFGenerator:
             
             # Obtener el código original
             source_code = program_info['source_code']
+            print(f"Código fuente obtenido: {len(source_code)} caracteres")
             
             # Crear un estilo para el encabezado del código (con menos espacio)
             self.styles.add(ParagraphStyle(
-                name='CodeHeader',
+                name=f'CodeHeader_{program_name}',  # Estilo único por programa
                 parent=self.styles['SectionHeader'],
                 fontSize=12,
                 fontName='Courier-Bold',
                 textColor=colors.black,
                 alignment=TA_LEFT,
-                spaceBefore=5,  # Reducido de 10 a 5
+                spaceBefore=5,
                 spaceAfter=2,
                 backColor=colors.white,
                 borderWidth=0,
@@ -390,13 +393,13 @@ class PDFGenerator:
             
             # Crear un estilo para las instrucciones de copia (con menos espacio)
             self.styles.add(ParagraphStyle(
-                name='CopyInstructions',
+                name=f'CopyInstructions_{program_name}',  # Estilo único por programa
                 parent=self.styles['ProgramInfo'],
                 fontSize=9,
                 alignment=TA_LEFT,
                 textColor=colors.HexColor('#777777'),
                 spaceBefore=0,
-                spaceAfter=3,  # Reducido de 5 a 3
+                spaceAfter=3,
                 backColor=colors.white,
                 borderWidth=0,
                 borderPadding=0
@@ -404,18 +407,18 @@ class PDFGenerator:
             
             # Estilo para código con formato de syntax highlighting (más compacto)
             self.styles.add(ParagraphStyle(
-                name='SyntaxHighlightedCode',
+                name=f'SyntaxHighlightedCode_{program_name}',  # Estilo único por programa
                 parent=self.styles['CodeStyle'],
                 fontSize=11,
                 fontName='Courier',
-                spaceBefore=10,  # Reducido de 15 a 10
-                spaceAfter=5,    # Reducido de 10 a 5
+                spaceBefore=10,
+                spaceAfter=5,
                 leftIndent=10,
                 rightIndent=10,
                 backColor=colors.white,
                 borderWidth=1,
                 borderColor=colors.HexColor("#CCCCCC"),
-                borderPadding=8,  # Reducido de 10 a 8
+                borderPadding=8,
                 borderRadius=0,
                 leading=14,
                 wordWrap=False
@@ -434,32 +437,33 @@ class PDFGenerator:
             
             # Unir líneas con breaks HTML
             highlighted_code = '<br/>'.join(highlighted_lines)
+            print(f"Código procesado con syntax highlighting: {len(highlighted_code)} caracteres")
             
             # Título distintivo para la sección de código
             code_elements.append(Paragraph(
                 "/* Código Fuente */",
-                self.styles['CodeHeader']
+                self.styles[f'CodeHeader_{program_name}']
             ))
             
             # Instrucciones claras para copiar
             code_elements.append(Paragraph(
                 "Para usar este código: Seleccione todo (Ctrl+A / Cmd+A) → Copie (Ctrl+C / Cmd+C)",
-                self.styles['CopyInstructions']
+                self.styles[f'CopyInstructions_{program_name}']
             ))
             
             # Crear párrafo con el código con syntax highlighting
             code_para = Paragraph(
                 highlighted_code,
-                self.styles['SyntaxHighlightedCode']
+                self.styles[f'SyntaxHighlightedCode_{program_name}']
             )
             
             # Añadir el código a la sección de códigos
             code_elements.append(code_para)
-            code_elements.append(Spacer(1, 10))  # Reducido de 15 a 10
+            code_elements.append(Spacer(1, 10))
             
             # Añadir los elementos de código a la lista de códigos
-            self.code_elements.append(KeepTogether(code_elements))
-            self.code_elements.append(Spacer(1, 10))  # Reducido de 15 a 10
+            self.code_elements.extend(code_elements)
+            print(f"Elementos de código agregados. Total elementos: {len(self.code_elements)}")
             
             # Crear elementos para la sección de resultados (más compactos)
             results_elements = []
@@ -490,16 +494,12 @@ class PDFGenerator:
                     
                     print(f"Agregando imagen desde: {screenshot_path} (Tamaño: {os.path.getsize(screenshot_path)} bytes)")
                     
-                    # NUEVO ENFOQUE: Usar la imagen directamente cuando sea posible
+                    # Usar la imagen directamente cuando sea posible
                     try:
-                        # Intentar añadir la imagen directamente desde el archivo
-                        # Este método evita transformaciones innecesarias que reducen calidad
-                        original_img_width, original_img_height = None, None
-                        
-                        # Primero verificar las dimensiones
+                        # Verificar las dimensiones
                         with PILImage.open(screenshot_path) as img_check:
                             original_img_width, original_img_height = img_check.size
-                            max_width = 6.5 * inch  # Ancho máximo
+                            max_width = 6.5 * inch
                             
                             # Calcular dimensiones para PDF
                             if original_img_width > max_width:
@@ -510,65 +510,53 @@ class PDFGenerator:
                                 img_width = original_img_width
                                 img_height = original_img_height
                         
-                        # Añadir la imagen directamente sin procesamiento de buffer
+                        # Añadir la imagen directamente sin procesamiento
                         results_elements.append(Paragraph(
                             "🖼️ Resultado de la Ejecución:",
                             self.styles['SectionHeader']
                         ))
                         
-                        # Usar la imagen original sin procesamiento
                         img = ReportLabImage(screenshot_path, width=img_width, height=img_height)
                         results_elements.append(img)
                         results_elements.append(Spacer(1, 10))
                         
-                        print(f"Imagen añadida directamente sin procesamiento. Dimensiones: {img_width}x{img_height}")
+                        print(f"Imagen añadida directamente. Dimensiones: {img_width}x{img_height}")
                         
                     except Exception as direct_img_error:
                         print(f"Error al añadir imagen directamente: {str(direct_img_error)}")
-                        print("Intentando método alternativo con buffer en memoria...")
+                        print("Intentando método alternativo con buffer...")
                         
-                        # Si falla el método directo, usar el método de buffer en memoria
+                        # Método alternativo con buffer
                         with PILImage.open(screenshot_path) as img:
-                            # Conservar el modo original de la imagen
                             original_width, original_height = img.size
-                            max_width = 6.5 * inch  # Ancho máximo
+                            max_width = 6.5 * inch
                             
-                            # Determinamos si necesitamos redimensionar
                             if original_width > max_width:
                                 ratio = max_width / original_width
                                 new_width = int(original_width * ratio)
                                 new_height = int(original_height * ratio)
-                                # Usar LANCZOS para la mejor calidad de escalado
                                 resized_img = img.resize((new_width, new_height), PILImage.LANCZOS)
-                                print(f"Imagen redimensionada de {original_width}x{original_height} a {new_width}x{new_height}")
-                                
-                                # Usar la imagen redimensionada
+                                print(f"Imagen redimensionada: {original_width}x{original_height} -> {new_width}x{new_height}")
                                 work_img = resized_img
                                 img_width = new_width
                                 img_height = new_height
                             else:
-                                # Usar la imagen original
                                 work_img = img
                                 img_width = original_width
                                 img_height = original_height
                             
-                            # Preparar el buffer en memoria
                             img_buffer = io.BytesIO()
-                            
-                            # Preservar el formato original
                             original_format = img.format or ('PNG' if screenshot_path.lower().endswith('.png') else 'JPEG')
                             
-                            # Guardar con la máxima calidad
                             if original_format.upper() == 'PNG':
-                                work_img.save(img_buffer, format='PNG', compress_level=0)  # Sin compresión
-                                print("Guardando en formato PNG sin compresión")
+                                work_img.save(img_buffer, format='PNG', compress_level=0)
+                                print("Imagen guardada como PNG sin compresión")
                             else:
                                 work_img.save(img_buffer, format='JPEG', quality=100, dpi=(300, 300), optimize=False)
-                                print("Guardando en formato JPEG con calidad 100 y 300 DPI")
+                                print("Imagen guardada como JPEG con calidad máxima")
                             
                             img_buffer.seek(0)
                             
-                            # Añadir la imagen con calidad preservada
                             results_elements.append(Paragraph(
                                 "🖼️ Resultado de la Ejecución:",
                                 self.styles['SectionHeader']
@@ -577,6 +565,7 @@ class PDFGenerator:
                             img = ReportLabImage(img_buffer, width=img_width, height=img_height)
                             results_elements.append(img)
                             results_elements.append(Spacer(1, 10))
+                            print("Imagen agregada mediante buffer")
                 
                 except Exception as e:
                     print(f"Error al procesar la imagen: {str(e)}")
@@ -586,11 +575,10 @@ class PDFGenerator:
                         self.styles['Normal']
                     ))
             
-            # Salida del programa en formato compacto
+            # Salida del programa
             if program_info.get('output'):
-                # Evaluar longitud de la salida
                 output_text = program_info['output']
-                if len(output_text) > 1000:  # Si es muy largo, truncar
+                if len(output_text) > 1000:
                     output_text = output_text[:1000] + "...\n[Resultado truncado por extensión]"
                 
                 results_elements.append(Paragraph(
@@ -605,17 +593,14 @@ class PDFGenerator:
                 results_elements.append(output_para)
             
             # Añadir los elementos de resultados a la lista de resultados
-            self.results_elements.append(KeepTogether(results_elements[:3]))  # Título y subtítulo
-            self.results_elements.extend(results_elements[3:])
-            self.results_elements.append(Spacer(1, 10))  # Reducido de 15 a 10
-            self.results_elements.append(Paragraph(
-                "─" * 80,  # Línea horizontal como separador
-                self.styles['CustomBody']
-            ))
-            self.results_elements.append(Spacer(1, 5))  # Reducido de 10 a 5
+            self.results_elements.extend(results_elements)
+            print(f"Elementos de resultados agregados. Total elementos: {len(self.results_elements)}")
             
             # Generar análisis del programa para la Sección 3
             self.generate_program_analysis(program_info, style_type)
+            print(f"Análisis generado. Total elementos de análisis: {len(self.analysis_elements)}")
+            
+            print(f"Programa {program_name} agregado completamente al PDF")
             
         except Exception as e:
             print(f"Error al añadir programa al PDF: {str(e)}")
@@ -652,17 +637,24 @@ class PDFGenerator:
             uses_vectors = 'vector' in source_code or 'Vector' in source_code
             uses_loops = any(loop in source_code for loop in ['for', 'while', 'do'])
             uses_functions = bool(re.findall(r'\w+\s+\w+\s*\([^)]*\)\s*{', source_code))
+            uses_pointers = '*' in source_code or '&' in source_code
+            uses_templates = 'template' in source_code
+            uses_inheritance = ':' in source_code and ('public' in source_code or 'private' in source_code or 'protected' in source_code)
+            uses_exceptions = 'try' in source_code or 'catch' in source_code or 'throw' in source_code
+            uses_smart_pointers = 'unique_ptr' in source_code or 'shared_ptr' in source_code or 'weak_ptr' in source_code
             
-            # Estilo para el análisis de código
-            self.styles.add(ParagraphStyle(
-                name='AnalysisText',
-                parent=self.styles['CustomBody'],
-                fontSize=10,
-                leading=14,
-                spaceBefore=4,
-                spaceAfter=4,
-                leftIndent=10
-            ))
+            # Crear estilo único para el análisis de este programa
+            style_name = f'AnalysisText_{program_name}'
+            if style_name not in self.styles:
+                self.styles.add(ParagraphStyle(
+                    name=style_name,
+                    parent=self.styles['CustomBody'],
+                    fontSize=10,
+                    leading=14,
+                    spaceBefore=4,
+                    spaceAfter=4,
+                    leftIndent=10
+                ))
             
             # Crear tabla de características
             analysis_elements.append(Paragraph(
@@ -678,7 +670,12 @@ class PDFGenerator:
                 ["Uso de Clases", "Sí" if uses_classes else "No"],
                 ["Uso de Vectores", "Sí" if uses_vectors else "No"],
                 ["Uso de Ciclos", "Sí" if uses_loops else "No"],
-                ["Uso de Funciones", "Sí" if uses_functions else "No"]
+                ["Uso de Funciones", "Sí" if uses_functions else "No"],
+                ["Uso de Punteros", "Sí" if uses_pointers else "No"],
+                ["Uso de Templates", "Sí" if uses_templates else "No"],
+                ["Uso de Herencia", "Sí" if uses_inheritance else "No"],
+                ["Manejo de Excepciones", "Sí" if uses_exceptions else "No"],
+                ["Uso de Smart Pointers", "Sí" if uses_smart_pointers else "No"]
             ]
             
             # Crear tabla de características
@@ -713,6 +710,10 @@ class PDFGenerator:
             if uses_functions: complexity += 5
             if uses_classes: complexity += 10
             if uses_vectors: complexity += 5
+            if uses_pointers: complexity += 15
+            if uses_templates: complexity += 15
+            if uses_inheritance: complexity += 15
+            if uses_exceptions: complexity += 10
             if total_lines > 50: complexity += 10
             if total_lines > 100: complexity += 10
             
@@ -726,7 +727,7 @@ class PDFGenerator:
             
             analysis_elements.append(Paragraph(
                 f"• Complejidad estimada: {complexity}/100 (Nivel: {complexity_level})",
-                self.styles['AnalysisText']
+                self.styles[style_name]
             ))
             
             # Análisis de buenas prácticas
@@ -747,6 +748,18 @@ class PDFGenerator:
             if "&" in source_code and "const" in source_code:
                 good_practices.append("Paso de parámetros por referencia constante (optimización)")
             
+            if uses_exceptions:
+                good_practices.append("Manejo de excepciones para control de errores")
+            
+            if uses_templates:
+                good_practices.append("Uso de templates para código genérico")
+            
+            if uses_inheritance:
+                good_practices.append("Aprovechamiento de la herencia para reutilización de código")
+            
+            if uses_smart_pointers:
+                good_practices.append("Uso de smart pointers para gestión segura de memoria")
+            
             comments_ratio = len(re.findall(r'(/\*|\*/|//)', source_code)) / max(total_lines, 1)
             if comments_ratio > 0.1:
                 good_practices.append("Documentación mediante comentarios")
@@ -758,7 +771,7 @@ class PDFGenerator:
             for practice in good_practices:
                 analysis_elements.append(Paragraph(
                     f"• {practice}",
-                    self.styles['AnalysisText']
+                    self.styles[style_name]
                 ))
             
             # Oportunidades de mejora
@@ -782,6 +795,12 @@ class PDFGenerator:
             if not uses_classes and total_lines > 80:
                 improvement_opportunities.append("Considerar el uso de estructuras o clases para organizar datos")
             
+            if not uses_exceptions and complexity > 40:
+                improvement_opportunities.append("Implementar manejo de excepciones para mejor control de errores")
+            
+            if uses_pointers and not uses_smart_pointers:
+                improvement_opportunities.append("Considerar el uso de smart pointers para mejor gestión de memoria")
+            
             # Si no hay oportunidades de mejora detectadas
             if not improvement_opportunities:
                 improvement_opportunities.append("No se detectaron oportunidades de mejora específicas")
@@ -789,7 +808,7 @@ class PDFGenerator:
             for opportunity in improvement_opportunities:
                 analysis_elements.append(Paragraph(
                     f"• {opportunity}",
-                    self.styles['AnalysisText']
+                    self.styles[style_name]
                 ))
             
             # Agregar separador final
@@ -846,7 +865,7 @@ class PDFGenerator:
         for prog_type, count in type_counts.items():
             summary_elements.append(Paragraph(
                 f"• {prog_type.capitalize()}: {count} programa{'s' if count != 1 else ''} ({count*100/n_programs:.1f}%)",
-                self.styles['AnalysisText']
+                self.styles['CustomBody']
             ))
         
         # Observaciones generales
@@ -857,17 +876,17 @@ class PDFGenerator:
         
         summary_elements.append(Paragraph(
             "• Los programas procesados muestran un rango variado de técnicas de programación en C++",
-            self.styles['AnalysisText']
+            self.styles['CustomBody']
         ))
         
         summary_elements.append(Paragraph(
             "• Se observa un buen uso de las bibliotecas estándar de C++ en la mayoría de los casos",
-            self.styles['AnalysisText']
+            self.styles['CustomBody']
         ))
         
         summary_elements.append(Paragraph(
             "• La complejidad de los programas es adecuada para el contexto educativo",
-            self.styles['AnalysisText']
+            self.styles['CustomBody']
         ))
         
         # Recomendaciones generales
@@ -878,22 +897,22 @@ class PDFGenerator:
         
         summary_elements.append(Paragraph(
             "• Incrementar el uso de comentarios para mejorar la legibilidad y mantenibilidad del código",
-            self.styles['AnalysisText']
+            self.styles['CustomBody']
         ))
         
         summary_elements.append(Paragraph(
             "• Implementar manejo de errores más robusto mediante bloques try/catch",
-            self.styles['AnalysisText']
+            self.styles['CustomBody']
         ))
         
         summary_elements.append(Paragraph(
             "• Considerar la adopción de estándares de codificación consistentes",
-            self.styles['AnalysisText']
+            self.styles['CustomBody']
         ))
         
         summary_elements.append(Paragraph(
             "• Explorar características modernas de C++ (C++11 en adelante) como smart pointers y lambdas",
-            self.styles['AnalysisText']
+            self.styles['CustomBody']
         ))
         
         summary_elements.append(Spacer(1, 15))
@@ -904,6 +923,7 @@ class PDFGenerator:
         """Guarda el documento PDF final con la estructura reorganizada."""
         try:
             print(f"\nGenerando PDF en: {self.output_path}")
+            print(f"Total de programas a incluir: {len(self.programs)}")
             
             # Generar la portada y el índice
             self.elements.extend(self.create_cover_page())
@@ -917,7 +937,13 @@ class PDFGenerator:
                 "SECCIÓN 1: CÓDIGOS FUENTE",
                 self.styles['ChapterTitle']
             ))
-            self.elements.append(Spacer(1, 5))  # Reducido de 15 a 5
+            self.elements.append(Spacer(1, 5))
+            
+            # Verificar que tenemos elementos de código
+            if not self.code_elements:
+                print("Advertencia: No hay elementos de código para incluir")
+            else:
+                print(f"Agregando {len(self.code_elements)} elementos de código")
             
             # Añadir todos los códigos
             self.elements.extend(self.code_elements)
@@ -928,7 +954,13 @@ class PDFGenerator:
                 "SECCIÓN 2: RESULTADOS DE EJECUCIÓN",
                 self.styles['ChapterTitle']
             ))
-            self.elements.append(Spacer(1, 5))  # Reducido de 15 a 5
+            self.elements.append(Spacer(1, 5))
+            
+            # Verificar que tenemos elementos de resultados
+            if not self.results_elements:
+                print("Advertencia: No hay elementos de resultados para incluir")
+            else:
+                print(f"Agregando {len(self.results_elements)} elementos de resultados")
             
             # Añadir todos los resultados
             self.elements.extend(self.results_elements)
@@ -941,6 +973,12 @@ class PDFGenerator:
             ))
             self.elements.append(Spacer(1, 5))
             
+            # Verificar que tenemos elementos de análisis
+            if not self.analysis_elements:
+                print("Advertencia: No hay elementos de análisis para incluir")
+            else:
+                print(f"Agregando {len(self.analysis_elements)} elementos de análisis")
+            
             # Añadir resumen general primero
             self.elements.extend(self.generate_summary_analysis())
             
@@ -950,8 +988,10 @@ class PDFGenerator:
             # Asegurar que el directorio de salida existe
             os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
             
-            # Intentar generar el PDF directamente en la ruta final
+            # Intentar generar el PDF
             try:
+                print("Construyendo PDF con todos los elementos...")
+                print(f"Total de elementos a incluir: {len(self.elements)}")
                 self.doc.build(self.elements)
                 
                 # Verificar si el PDF se creó correctamente
@@ -961,118 +1001,17 @@ class PDFGenerator:
                     return True
                 else:
                     print(f"El PDF no se generó correctamente en {self.output_path}")
-            except Exception as direct_error:
-                print(f"Error al generar el PDF directamente: {direct_error}")
-                traceback.print_exc()
-                
-                # Si falló la generación directa, intentar con archivo temporal
-                temp_path = f"{self.output_path}.temp.pdf"
-                temp_doc = SimpleDocTemplate(
-                    temp_path,
-                    pagesize=A4,
-                    rightMargin=0.5*inch,
-                    leftMargin=0.5*inch,
-                    topMargin=0.5*inch,
-                    bottomMargin=0.5*inch
-                )
-                
-                try:
-                    temp_doc.build(self.elements)
+                    return False
                     
-                    # Si llegamos aquí, la generación fue exitosa
-                    # Verificar si se creó el archivo temporal
-                    if os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
-                        # Renombrar al nombre final
-                        if os.path.exists(self.output_path):
-                            try:
-                                os.remove(self.output_path)
-                            except Exception as rm_error:
-                                print(f"Error al eliminar archivo PDF existente: {rm_error}")
-                                # Si no podemos eliminar, usamos un nombre alternativo
-                                self.output_path = f"{self.output_path.replace('.pdf', '')}_new.pdf"
-                                print(f"Usando nombre alternativo: {self.output_path}")
-                        
-                        # Copiar el archivo temporal al final
-                        import shutil
-                        shutil.copy2(temp_path, self.output_path)
-                        
-                        # Eliminar el temporal
-                        try:
-                            os.remove(temp_path)
-                        except:
-                            pass
-                            
-                        print(f"PDF generado mediante archivo temporal: {self.output_path}")
-                        print(f"Tamaño: {os.path.getsize(self.output_path) / 1024:.2f} KB")
-                        return True
-                        
-                    else:
-                        print(f"Error: El archivo temporal {temp_path} no se creó correctamente")
-                except Exception as temp_error:
-                    print(f"Error al generar el PDF con archivo temporal: {temp_error}")
-                    traceback.print_exc()
-            
-            # Verificar una última vez si el PDF existe
-            if os.path.exists(self.output_path) and os.path.getsize(self.output_path) > 0:
-                print(f"PDF encontrado a pesar de los errores: {self.output_path}")
-                return True
+            except Exception as build_error:
+                print(f"Error al construir el PDF: {build_error}")
+                traceback.print_exc()
+                return False
                 
-            return False
-            
         except Exception as e:
             print(f"Error al generar el PDF: {e}")
             traceback.print_exc()
-            
-            # Intentar recuperación de errores
-            try:
-                # Verificar si tenemos elementos
-                if not self.elements:
-                    print("No hay elementos para generar el PDF")
-                    return False
-                
-                # Intentar generar un PDF simplificado como último recurso
-                recovery_path = self.output_path.replace('.pdf', '_recovery.pdf')
-                print(f"Intentando recuperación en: {recovery_path}")
-                
-                # Filtrar elementos problemáticos (como imágenes que podrían estar causando errores)
-                simplified_elements = []
-                for element in self.elements:
-                    if not isinstance(element, ReportLabImage):
-                        simplified_elements.append(element)
-                
-                # Generar el PDF simplificado
-                doc = SimpleDocTemplate(
-                    recovery_path,
-                    pagesize=A4,
-                    rightMargin=0.5*inch,
-                    leftMargin=0.5*inch,
-                    topMargin=0.5*inch,
-                    bottomMargin=0.5*inch
-                )
-                
-                doc.build(simplified_elements)
-                
-                if os.path.exists(recovery_path) and os.path.getsize(recovery_path) > 0:
-                    print(f"Se generó un PDF de recuperación: {recovery_path}")
-                    print("Nota: Este PDF puede no contener todas las imágenes")
-                    # Copiar el archivo de recuperación al nombre original
-                    import shutil
-                    shutil.copy2(recovery_path, self.output_path)
-                    return True
-                else:
-                    # Una última verificación
-                    if os.path.exists(self.output_path) and os.path.getsize(self.output_path) > 0:
-                        print(f"PDF encontrado a pesar de todos los errores: {self.output_path}")
-                        return True
-                    return False
-                    
-            except Exception as recovery_error:
-                print(f"Error en la recuperación del PDF: {recovery_error}")
-                # Verificación final
-                if os.path.exists(self.output_path) and os.path.getsize(self.output_path) > 0:
-                    print(f"PDF encontrado después de todos los intentos: {self.output_path}")
-                    return True
-                return False
+            return False
 
     def save_pdf(self):
         """Alias para el método save para mantener compatibilidad."""

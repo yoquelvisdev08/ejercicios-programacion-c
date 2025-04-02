@@ -199,7 +199,9 @@ end tell'"""
                     raise Exception(f"No se pudo iniciar el terminal: {term_ex}")
             
             # Esperar a que el usuario interactúe con el programa
-            print("Esperando a que el usuario complete la ejecución...")
+            print("\nEsperando a que el usuario complete la ejecución...")
+            print("Tome todo el tiempo que necesite para revisar la salida.")
+            print("Cuando haya terminado, presione Enter para continuar.")
             time.sleep(2)  # Dar tiempo para que la ventana se abra completamente
             
             # Script para verificar si el Terminal sigue ocupado
@@ -219,13 +221,14 @@ tell application "Terminal"
 end tell'"""
             
             # Esperar hasta que el Terminal ya no esté ocupado (programa terminado)
-            max_wait = self.timeout  # Usar el timeout configurado
             wait_time = 0
-            while wait_time < max_wait:
+            while True:  # Bucle infinito hasta que el usuario presione Enter
                 try:
                     result = os.popen(check_busy_script).read().strip()
                     if result.lower() == "false":
-                        print("Ejecución del programa completada")
+                        print("\nEjecución del programa completada")
+                        print("Presione Enter cuando haya terminado de revisar la salida...")
+                        time.sleep(1)  # Pausa adicional después de que el usuario presione Enter
                         break
                 except Exception as check_ex:
                     print(f"Error al verificar estado de terminal: {check_ex}")
@@ -234,16 +237,14 @@ end tell'"""
                 time.sleep(1)
                 wait_time += 1
                 
-                # Informar progreso cada 5 segundos
-                if wait_time % 5 == 0:
-                    print(f"Esperando... ({wait_time}/{max_wait}s)")
-            
-            # Avisar si se alcanzó el tiempo máximo
-            if wait_time >= max_wait:
-                print(f"Se alcanzó el tiempo máximo de espera ({max_wait}s). Procediendo con la captura...")
+                # Informar progreso cada 10 segundos
+                if wait_time % 10 == 0:
+                    print("\nTodavía esperando...")
+                    print("Tome su tiempo para revisar la salida.")
+                    print("Presione Enter cuando haya terminado para continuar...")
             
             # Dar tiempo para que la ventana se estabilice
-            time.sleep(1)
+            time.sleep(2)
             
             # Intentar tomar la captura varias veces si es necesario
             screenshot_taken = False
