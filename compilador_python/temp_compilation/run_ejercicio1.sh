@@ -4,7 +4,7 @@ echo "=================================================="
 echo "Ejecutando: ejercicio1"
 echo "=================================================="
 echo ""
-"/Users/yoquelvisabreu/Desktop/c++/compilador_python/temp_compilation/ejercicio1" # Se agregan comillas para manejar rutas con espacios
+"/Users/yoquelvisabreu/Desktop/ejercicios-programacion-c/compilador_python/temp_compilation/ejercicio1" # Se agregan comillas para manejar rutas con espacios
 echo ""
 echo "=================================================="
 echo "Ejecución completada"

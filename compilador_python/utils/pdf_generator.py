@@ -470,10 +470,6 @@ class PDFGenerator:
             
             # Título del resultado
             result_title = f"Resultado: {program_name}"
-            results_elements.append(Paragraph(
-                result_title,
-                self.styles['ProgramTitle']
-            ))
             
             # Captura de pantalla optimizada
             if program_info.get('screenshot'):
@@ -494,6 +490,33 @@ class PDFGenerator:
                     
                     print(f"Agregando imagen desde: {screenshot_path} (Tamaño: {os.path.getsize(screenshot_path)} bytes)")
                     
+                    # Crear elementos para mantener juntos (título e imagen)
+                    screenshot_elements = []
+                    
+                    # Título del resultado (solo una vez al inicio)
+                    screenshot_elements.append(Paragraph(
+                        result_title,
+                        self.styles['ProgramTitle']
+                    ))
+                    
+                    # Información de compilación (si existe)
+                    if program_info.get('output'):
+                        output_text = program_info['output']
+                        if len(output_text) > 1000:
+                            output_text = output_text[:1000] + "...\n[Resultado truncado por extensión]"
+                        
+                        screenshot_elements.append(Paragraph(
+                            "📊 Información de Compilación:",
+                            self.styles['SectionHeader']
+                        ))
+                        
+                        output_para = Paragraph(
+                            f"<pre>{output_text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')}</pre>",
+                            self.styles['CodeStyle']
+                        )
+                        screenshot_elements.append(output_para)
+                        screenshot_elements.append(Spacer(1, 10))
+                    
                     # Usar la imagen directamente cuando sea posible
                     try:
                         # Verificar las dimensiones
@@ -510,15 +533,10 @@ class PDFGenerator:
                                 img_width = original_img_width
                                 img_height = original_img_height
                         
-                        # Añadir la imagen directamente sin procesamiento
-                        results_elements.append(Paragraph(
-                            "🖼️ Resultado de la Ejecución:",
-                            self.styles['SectionHeader']
-                        ))
-                        
+                        # Añadir la imagen sin duplicar el título
                         img = ReportLabImage(screenshot_path, width=img_width, height=img_height)
-                        results_elements.append(img)
-                        results_elements.append(Spacer(1, 10))
+                        screenshot_elements.append(img)
+                        screenshot_elements.append(Spacer(1, 10))
                         
                         print(f"Imagen añadida directamente. Dimensiones: {img_width}x{img_height}")
                         
@@ -557,15 +575,15 @@ class PDFGenerator:
                             
                             img_buffer.seek(0)
                             
-                            results_elements.append(Paragraph(
-                                "🖼️ Resultado de la Ejecución:",
-                                self.styles['SectionHeader']
-                            ))
-                            
+                            # Añadir la imagen sin duplicar el título
                             img = ReportLabImage(img_buffer, width=img_width, height=img_height)
-                            results_elements.append(img)
-                            results_elements.append(Spacer(1, 10))
+                            screenshot_elements.append(img)
+                            screenshot_elements.append(Spacer(1, 10))
                             print("Imagen agregada mediante buffer")
+                    
+                    # Envolver los elementos en KeepTogether para mantenerlos en la misma página
+                    results_elements.append(KeepTogether(screenshot_elements))
+                    results_elements.append(PageBreak())  # Añadir salto de página después de cada captura
                 
                 except Exception as e:
                     print(f"Error al procesar la imagen: {str(e)}")
@@ -575,13 +593,22 @@ class PDFGenerator:
                         self.styles['Normal']
                     ))
             
-            # Salida del programa
-            if program_info.get('output'):
+            # Salida del programa (solo si no hay captura)
+            elif program_info.get('output'):
                 output_text = program_info['output']
                 if len(output_text) > 1000:
                     output_text = output_text[:1000] + "...\n[Resultado truncado por extensión]"
                 
-                results_elements.append(Paragraph(
+                # Crear elementos para mantener juntos (título y salida)
+                output_elements = []
+                
+                # Título del resultado (solo una vez)
+                output_elements.append(Paragraph(
+                    result_title,
+                    self.styles['ProgramTitle']
+                ))
+                
+                output_elements.append(Paragraph(
                     "📊 Información de Compilación:",
                     self.styles['SectionHeader']
                 ))
@@ -590,7 +617,11 @@ class PDFGenerator:
                     f"<pre>{output_text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')}</pre>",
                     self.styles['CodeStyle']
                 )
-                results_elements.append(output_para)
+                output_elements.append(output_para)
+                
+                # Envolver los elementos en KeepTogether para mantenerlos en la misma página
+                results_elements.append(KeepTogether(output_elements))
+                results_elements.append(PageBreak())
             
             # Añadir los elementos de resultados a la lista de resultados
             self.results_elements.extend(results_elements)
@@ -961,10 +992,9 @@ class PDFGenerator:
                 print("Advertencia: No hay elementos de resultados para incluir")
             else:
                 print(f"Agregando {len(self.results_elements)} elementos de resultados")
-            
-            # Añadir todos los resultados
-            self.elements.extend(self.results_elements)
-            self.elements.append(PageBreak())
+                
+                # Añadir todos los resultados
+                self.elements.extend(self.results_elements)
             
             # Sección 3: Análisis de programas
             self.elements.append(Paragraph(
